@@ -23,7 +23,7 @@ from typing import Any
 
 import pytest
 
-from rullo.devices import ftms, wahoo
+from rullo.devices import antplus, ftms, wahoo
 from rullo.devices.ble import BleTrainer, classify
 
 
@@ -37,6 +37,7 @@ class FakeServices:
 
 FTMS_CHARS = {ftms.CONTROL_POINT, ftms.INDOOR_BIKE_DATA, ftms.FTMS_FEATURE}
 WAHOO_CHARS = {wahoo.WAHOO_CONTROL, wahoo.CYCLING_POWER_MEASUREMENT}
+FEC_CHARS = {antplus.FEC_BLE_WRITE, antplus.FEC_BLE_NOTIFY}
 
 
 class FakeClient:
@@ -206,7 +207,7 @@ async def test_reconnect_reapplies_the_last_command() -> None:
 
 async def test_trainer_without_any_control_is_rejected() -> None:
     dev = BleTrainer("AA", sleep=_no_wait, client_factory=_factory(FakeClient(set())))
-    with pytest.raises(ConnectionError, match="neither FTMS nor Wahoo"):
+    with pytest.raises(ConnectionError, match="no trainer control"):
         await dev.connect()
 
 
@@ -215,3 +216,27 @@ async def test_connect_failure_explains_the_usual_cause() -> None:
     dev = BleTrainer("AA", sleep=_no_wait, client_factory=_factory(trainer))
     with pytest.raises(ConnectionError, match="system Bluetooth settings"):
         await dev.connect()
+
+
+async def test_tacx_fec_over_bluetooth() -> None:
+    trainer = FakeClient(FEC_CHARS | WAHOO_CHARS)  # FE-C wins over Wahoo control
+    dev = BleTrainer(
+        "TACX", mass_kg=80.0, sleep=_no_wait, client_factory=_factory(trainer)
+    )
+    await dev.connect()
+    assert dev.protocol == "fec"
+    page = bytes([0x19, 1, 88, 0, 0, 0x2C, 0x01, 0])  # 300 W, 88 rpm
+    trainer.callbacks[antplus.FEC_BLE_NOTIFY](None, bytearray(antplus.ble_frame(page)))
+    sample = await anext(dev.telemetry())
+    assert (sample.power, sample.cadence) == (300, 88)
+    await dev.set_grade(4.0)
+    await dev.set_target_power(250)
+    assert trainer.writes == [
+        antplus.ble_frame(antplus.user_configuration(80.0)),
+        antplus.ble_frame(antplus.track_resistance(4.0)),
+        antplus.ble_frame(antplus.target_power(250)),
+    ]
+    assert classify("Tacx Neo 2T", {antplus.FEC_BLE_SERVICE}) == (
+        "trainer",
+        "Tacx FE-C trainer",
+    )

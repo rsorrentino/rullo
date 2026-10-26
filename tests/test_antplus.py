@@ -66,3 +66,13 @@ def test_control_pages() -> None:
 def test_target_power_is_clamped(watts: int) -> None:
     raw = antplus.target_power(watts)
     assert 0 <= raw[6] | (raw[7] << 8) <= 16000
+
+
+def test_ble_frames_round_trip_and_reject_corruption() -> None:
+    page = antplus.target_power(250)
+    frame = antplus.ble_frame(page)
+    assert frame[:4] == bytes([0xA4, 0x09, 0x4F, 0x05]) and len(frame) == 13
+    assert antplus.ble_page(frame) == page
+    corrupt = frame[:6] + bytes([frame[6] ^ 0xFF]) + frame[7:]
+    assert antplus.ble_page(corrupt) is None
+    assert antplus.ble_page(b"\x00" * 13) is None

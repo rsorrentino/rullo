@@ -130,3 +130,39 @@ def user_configuration(mass_kg: float, bike_kg: float = 9.0) -> bytes:
             0x00,
         ]
     )
+
+
+# Tacx FE-C over Bluetooth: the same FE-C pages, wrapped in ANT message frames
+# (sync 0xA4, length 9, message id, channel 5, 8-byte page, XOR checksum) on a
+# vendor service.
+FEC_BLE_SERVICE = "6e40fec1-b5a3-f393-e0a9-e50e24dcca9e"
+FEC_BLE_NOTIFY = "6e40fec2-b5a3-f393-e0a9-e50e24dcca9e"  # trainer -> app
+FEC_BLE_WRITE = "6e40fec3-b5a3-f393-e0a9-e50e24dcca9e"  # app -> trainer
+_SYNC, _BROADCAST, _ACKNOWLEDGED, _FEC_CHANNEL = 0xA4, 0x4E, 0x4F, 0x05
+
+
+def ble_frame(page: bytes) -> bytes:
+    """Wrap an 8-byte FE-C page as an acknowledged ANT message for BLE."""
+    if len(page) != 8:
+        raise ValueError("an ANT+ page is 8 bytes")
+    body = bytes([_SYNC, 9, _ACKNOWLEDGED, _FEC_CHANNEL]) + page
+    checksum = 0
+    for byte in body:
+        checksum ^= byte
+    return body + bytes([checksum])
+
+
+def ble_page(frame: bytes) -> bytes | None:
+    """The 8-byte page inside an ANT message from a Tacx trainer, if valid."""
+    if (
+        len(frame) < 13
+        or frame[0] != _SYNC
+        or frame[2] not in (_BROADCAST, _ACKNOWLEDGED)
+    ):
+        return None
+    checksum = 0
+    for byte in frame[: 4 + 8]:
+        checksum ^= byte
+    if checksum != frame[12]:
+        return None
+    return bytes(frame[4:12])

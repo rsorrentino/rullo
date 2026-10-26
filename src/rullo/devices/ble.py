@@ -30,7 +30,7 @@ from collections.abc import AsyncIterator, Awaitable, Callable
 from dataclasses import dataclass
 from typing import Any, Protocol, cast
 
-from rullo.devices import ftms, wahoo
+from rullo.devices import antplus, ftms, wahoo
 from rullo.telemetry import Telemetry
 
 logger = logging.getLogger(__name__)
@@ -86,6 +86,8 @@ def classify(name: str, uuids: set[str]) -> tuple[str, str] | None:
     """(kind, detail) for an advertisement, or None if Rullo cannot use it."""
     if ftms.FTMS_SERVICE in uuids:
         return "trainer", "FTMS trainer"
+    if antplus.FEC_BLE_SERVICE in uuids:
+        return "trainer", "Tacx FE-C trainer"
     if wahoo.CYCLING_POWER_SERVICE in uuids and name.upper().startswith("KICKR"):
         return "trainer", "Wahoo trainer"
     if ftms.HR_SERVICE in uuids:
@@ -133,7 +135,9 @@ class BleTrainer:
         self._clock = clock
         self._trainer: Client | None = None
         self._sensors: list[Client] = []
-        self.protocol: str | None = None  # "ftms" or "wahoo" once connected
+        self.protocol: str | None = None  # "ftms", "fec" or "wahoo" once connected
+        self._fec_response = True  # write with response, if the trainer offers it
+        self._fec_configured = False
         self.features: ftms.Features | None = None
         self._power: int | None = None
         self._trainer_cadence: int | None = None
@@ -179,12 +183,14 @@ class BleTrainer:
         services = client.services
         if services.get_characteristic(ftms.CONTROL_POINT) is not None:
             await self._setup_ftms(client)
+        elif (fec := services.get_characteristic(antplus.FEC_BLE_WRITE)) is not None:
+            await self._setup_fec(client, fec)
         elif services.get_characteristic(wahoo.WAHOO_CONTROL) is not None:
             await self._setup_wahoo(client)
         else:
             await client.disconnect()
             raise ConnectionError(
-                f"{self._address} offers neither FTMS nor Wahoo trainer control"
+                f"{self._address} offers no trainer control (FTMS, FE-C or Wahoo)"
             )
         logger.info("trainer %s connected using %s", self._address, self.protocol)
 
@@ -197,6 +203,13 @@ class BleTrainer:
         await client.start_notify(ftms.CONTROL_POINT, self._on_ftms_control)
         await client.write_gatt_char(ftms.CONTROL_POINT, ftms.request_control(), True)
         await client.write_gatt_char(ftms.CONTROL_POINT, ftms.start_or_resume(), True)
+
+    async def _setup_fec(self, client: Client, write_char: Any) -> None:
+        self.protocol = "fec"
+        properties = getattr(write_char, "properties", None) or ["write"]
+        self._fec_response = "write" in properties
+        self._fec_configured = False
+        await client.start_notify(antplus.FEC_BLE_NOTIFY, self._on_fec)
 
     async def _setup_wahoo(self, client: Client) -> None:
         self.protocol = "wahoo"
@@ -217,6 +230,31 @@ class BleTrainer:
         self._power = reading.power
         if reading.crank is not None:
             self._trainer_crank.update(reading.crank, self._clock())
+
+    def _on_fec(self, _: Any, data: bytearray) -> None:
+        page = antplus.ble_page(bytes(data))
+        reading = antplus.parse_fec(page) if page is not None else None
+        if reading is not None:
+            self._power, self._trainer_cadence = reading.power, reading.cadence
+
+    async def _fec_send(self, page: bytes) -> None:
+        client = self._trainer
+        if client is None or not client.is_connected:
+            return
+        async with self._write_lock:
+            try:
+                if not self._fec_configured:  # rider weight first, so grade feels right
+                    await client.write_gatt_char(
+                        antplus.FEC_BLE_WRITE,
+                        antplus.ble_frame(antplus.user_configuration(self._mass_kg)),
+                        self._fec_response,
+                    )
+                    self._fec_configured = True
+                await client.write_gatt_char(
+                    antplus.FEC_BLE_WRITE, antplus.ble_frame(page), self._fec_response
+                )
+            except Exception as exc:
+                logger.warning("FE-C write failed: %s", exc)
 
     def _on_hr(self, _: Any, data: bytearray) -> None:
         self._strap_hr = ftms.parse_heart_rate(bytes(data))
@@ -297,6 +335,8 @@ class BleTrainer:
         if self.protocol == "ftms":
             if self.features is not None and self.features.simulation:
                 await self._write(ftms.CONTROL_POINT, ftms.set_simulation(percent))
+        elif self.protocol == "fec":
+            await self._fec_send(antplus.track_resistance(percent))
         elif self.protocol == "wahoo":
             if self._wahoo_mode != "sim":
                 if not await self._write(
@@ -311,6 +351,8 @@ class BleTrainer:
         if self.protocol == "ftms":
             if self.features is not None and self.features.target_power:
                 await self._write(ftms.CONTROL_POINT, ftms.set_target_power(watts))
+        elif self.protocol == "fec":
+            await self._fec_send(antplus.target_power(watts))
         elif self.protocol == "wahoo":
             if await self._write(wahoo.WAHOO_CONTROL, wahoo.erg(watts)):
                 self._wahoo_mode = "erg"
