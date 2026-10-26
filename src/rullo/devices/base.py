@@ -17,9 +17,18 @@
 """The Device protocol every real or fake trainer implements."""
 
 from collections.abc import AsyncIterator
+from enum import Enum
 from typing import Protocol
 
 from rullo.telemetry import Telemetry
+
+
+class Mode(Enum):
+    """Trainer resistance mode."""
+
+    SIM = "sim"  # course grade and physics govern resistance
+    ERG = "erg"  # trainer holds the rider at a fixed target power
+    FREE = "free"  # no resistance control, rider pedals unresisted
 
 
 class Device(Protocol):
@@ -31,6 +40,6 @@ class Device(Protocol):
 
     async def set_grade(self, percent: float) -> None: ...
 
-    async def set_target_power(self, watts: float) -> None: ...
+    async def set_target_power(self, watts: int) -> None: ...
 
     async def disconnect(self) -> None: ...
