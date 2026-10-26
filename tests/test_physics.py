@@ -19,13 +19,25 @@
 from rullo.physics import RiderParams, speed_from_power
 
 
-def test_flat_steady_power_converges() -> None:
+def _converge(power: float, grade: float, ticks: int = 6000, dt: float = 0.1) -> float:
     params = RiderParams()
     v = 0.0
-    for _ in range(6000):
-        v = speed_from_power(200.0, 0.0, v, params, 0.1)
-    assert 8.0 < v < 11.0  # ~30-40 km/h
-    assert abs(speed_from_power(200.0, 0.0, v, params, 0.1) - v) < 1e-2
+    for _ in range(ticks):
+        v = speed_from_power(power, grade, v, params, dt)
+    return v
+
+
+def test_flat_steady_power_converges() -> None:
+    v = _converge(250.0, 0.0)
+    assert 9.0 < v < 12.0  # ~32-43 km/h, plausible for 250 W / 78 kg
+    params = RiderParams()
+    assert abs(speed_from_power(250.0, 0.0, v, params, 0.1) - v) < 1e-2
+
+
+def test_higher_grade_lowers_steady_speed() -> None:
+    flat = _converge(250.0, 0.0)
+    climbing = _converge(250.0, 6.0)
+    assert climbing < flat
 
 
 def test_zero_power_decelerates_to_zero() -> None:
