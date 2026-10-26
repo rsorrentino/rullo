@@ -6,6 +6,18 @@ firmware) or ANT+ FE-C (or a simulated one), turns your power into speed with a 
 elevation profile, and records every ride to a `.fit` file you can upload to
 Strava or intervals.icu.
 
+![Ride screen: power ring gauge, workout intervals, metrics and the route profile](docs/screenshots/ride.png)
+
+## Screenshots
+
+| Pair sensors | Workouts |
+| --- | --- |
+| ![Pairing screen](docs/screenshots/pair.png) | ![Workout picker](docs/screenshots/workouts.png) |
+| **Ride summary** | **Routes** |
+| ![Ride summary with power chart and laps](docs/screenshots/summary.png) | ![Route picker](docs/screenshots/routes.png) |
+
+<p align="center"><img src="docs/screenshots/ride-phone.png" alt="Ride screen on a phone-sized window" width="260"></p>
+
 ## Quickstart
 
 ```sh
@@ -109,3 +121,8 @@ and report security issues as described in [SECURITY.md](SECURITY.md).
 ## License
 
 GPL-3.0-or-later. The bundled routes are synthetic demo data.
+
+The app bundles the [Inter](https://github.com/rsms/inter) and
+[Space Grotesk](https://github.com/floriankarsten/space-grotesk) fonts under the
+SIL Open Font License 1.1 (license texts in `src/rullo/web/fonts/`), so it works
+offline.

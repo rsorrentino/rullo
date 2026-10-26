@@ -29,8 +29,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - ANT+ over a USB stick (via `openant`): FE-C trainers with grade, target power
   and rider weight; power meters (read only); heart-rate straps; cadence
   sensors. The pairing screen scans either radio.
-- Logo and favicon; a consistent layout across pages, with a top bar under
-  1024 px and the summary inside the content area.
+- "Daylight" visual design: light paper ground, white hairline cards, one indigo
+  accent, Space Grotesk numerals and Inter text (both bundled for offline use).
+  The ride screen has a power ring gauge against FTP, a workout interval
+  strip, a 2x2 metric grid and the route profile.
+- Per-lap NP and estimated calories in the ride summary.
+- Logo and favicon, and a consistent layout on every page and screen size.
 - CONTRIBUTING, CODE_OF_CONDUCT, SECURITY, and issue and pull request templates.
 - Course model with GPX import; three synthetic demo routes.
 - `.zwo` workouts in ERG mode; six bundled workouts.
