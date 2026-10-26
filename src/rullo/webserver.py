@@ -130,16 +130,16 @@ def _check_origin(req: Request) -> None:
 def _head(
     status: int, content_type: str, extra: dict[str, str], length: int | None
 ) -> bytes:
+    headers = {"Cache-Control": "no-store"} | extra  # a response may allow caching
     lines = [
         f"HTTP/1.1 {status} {_REASONS.get(status, 'OK')}",
         f"Content-Type: {content_type}",
-        "Cache-Control: no-store",
         "X-Content-Type-Options: nosniff",
         "Connection: close",
     ]
     if length is not None:
         lines.append(f"Content-Length: {length}")
-    lines += [f"{k}: {v}" for k, v in extra.items()]
+    lines += [f"{k}: {v}" for k, v in headers.items()]
     return ("\r\n".join(lines) + "\r\n\r\n").encode("latin-1")
 
 

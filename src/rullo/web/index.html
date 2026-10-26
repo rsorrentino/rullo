@@ -7,320 +7,334 @@
 <title>Rullo</title>
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <style>
+  /* Daylight direction: paper ground, white hairline cards, one indigo accent. */
+  @font-face { font-family: "Inter"; src: url("/fonts/inter.woff2") format("woff2");
+    font-weight: 100 900; font-display: swap; }
+  @font-face { font-family: "Space Grotesk"; src: url("/fonts/space-grotesk.woff2") format("woff2");
+    font-weight: 300 700; font-display: swap; }
   :root {
-    --ground: #0b0f14; --surface: #141a22; --elevated: #171e27;
-    --hairline: rgba(255, 255, 255, 0.08);
-    --ink: #f2f5f8; --muted: #9aa4b2; --faint: #6b7684;
-    --power: #ff7a1a; --hr: #ff5252; --cadence: #2dd4bf; --speed: #4c9aff;
-    --success: #34d399; --distance: #a78bfa; --warn: #facc15;
-    --z1: #6b7684; --z2: #4c9aff; --z3: #34d399; --z4: #facc15;
-    --z5: #ff7a1a; --z6: #ff5252; --z7: #a78bfa;
-    --panel: rgba(11, 15, 20, 0.72);
-    --sans: "Barlow", system-ui, -apple-system, "Segoe UI", sans-serif;
-    --condensed: "Barlow Condensed", "Barlow", system-ui, sans-serif;
+    --ground: #f4f5f7; --card: #ffffff; --hairline: #e6e8ec; --track: #eceef2;
+    --ink: #141821; --secondary: #4a5260; --faint: #8a93a1;
+    --accent: #3a45e0; --accent-ink: #ffffff; --accent-soft: #eceefd;
+    --hr: #e5484d; --cadence: #0e9e9e; --speed: #e08a0e; --distance: #7a5af0;
+    --success: #16a34a; --warn: #c27a0a; --danger: #d33a3f; --strava: #fc4c02;
+    --z1: #9aa3b1; --z2: #3b8be1; --z3: #16a34a; --z4: #e0a00e;
+    --z5: #3a45e0; --z6: #e5484d; --z7: #7a5af0;
+    --sans: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --display: "Space Grotesk", "Inter", system-ui, sans-serif;
+    --r-card: 16px;
+    --content: 1120px; --narrow: 932px; --pad: 32px; --top-h: 64px;
   }
   * { box-sizing: border-box; margin: 0; }
-  html, body { height: 100%; }
+  html, body { min-height: 100%; }
   body { background: var(--ground); color: var(--ink); font: 400 16px/1.5 var(--sans);
-    font-variant-numeric: tabular-nums; }
+    -webkit-font-smoothing: antialiased; }
   [hidden] { display: none !important; }
   a { color: inherit; }
   button, input, select { font: inherit; color: inherit; }
-  .label { font: 600 11px/1.2 var(--sans); letter-spacing: 0.14em; text-transform: uppercase;
-    color: var(--muted); }
-  .num { font-family: var(--condensed); font-weight: 700; line-height: 1; }
-  .unit { color: var(--muted); font-size: 14px; margin-left: 4px; font-weight: 400; }
-  .muted { color: var(--muted); } .faint { color: var(--faint); }
-  .small { font-size: 13px; }
-  .dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 6px;
-    vertical-align: 1px; background: var(--faint); }
-  .btn { font-weight: 600; font-size: 14px; background: var(--surface); border: 1px solid var(--hairline);
-    border-radius: 10px; padding: 10px 18px; cursor: pointer; text-decoration: none;
-    display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; }
-  .btn:hover { background: var(--elevated); }
-  .btn.primary { background: var(--power); border-color: var(--power); color: #140a02; }
-  .btn.primary:hover { filter: brightness(1.08); }
-  .btn:disabled { opacity: 0.5; cursor: default; }
-  .btn.small { padding: 6px 12px; font-size: 13px; }
-  .pill { font-size: 12px; font-weight: 600; padding: 3px 10px; border-radius: 999px;
-    background: rgba(255, 255, 255, 0.05); white-space: nowrap; }
-  .pill.ok { color: var(--success); background: rgba(52, 211, 153, 0.12); }
-  .pill.ok .dot { background: var(--success); }
-  .pill.wait { color: var(--warn); background: rgba(250, 204, 21, 0.12); }
-  .pill.wait .dot { background: var(--warn); }
-  .pill.tag { color: var(--power); background: rgba(255, 122, 26, 0.12); letter-spacing: 0.08em;
-    font-size: 10px; text-transform: uppercase; }
-  .card { background: var(--surface); border: 1px solid var(--hairline); border-radius: 14px;
-    padding: 16px 18px; }
-  input[type=text], input[type=number], input[type=password], select {
-    background: var(--ground); border: 1px solid var(--hairline); border-radius: 10px;
-    padding: 9px 12px; width: 100%; font-size: 14px; font-weight: 400; }
-  input:focus-visible, select:focus-visible, .btn:focus-visible, .pick:focus-visible {
-    outline: 2px solid var(--power); outline-offset: 2px; }
+  h1 { font: 600 32px/1.15 var(--display); letter-spacing: -0.01em; }
+  h2 { font: 600 18px/1.3 var(--display); }
+  .num { font-family: var(--display); font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums;
+    letter-spacing: -0.01em; }
+  .label { font: 600 12px/1.2 var(--sans); letter-spacing: 0.12em; text-transform: uppercase; color: var(--secondary); }
+  .unit { color: var(--secondary); font: 400 16px var(--sans); margin-left: 6px; letter-spacing: 0; }
+  .muted { color: var(--secondary); } .faint { color: var(--faint); } .small { font-size: 14px; }
+  .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 8px;
+    vertical-align: 1px; background: var(--faint); flex: none; }
 
-  /* App shell */
-  :root { --side-w: 220px; --content-max: 1120px; --pad-x: 40px; --pad-y: 32px; }
-  .shell { display: grid; grid-template-columns: var(--side-w) minmax(0, 1fr); min-height: 100%;
-    background: linear-gradient(to right, #0d1218 var(--side-w), transparent var(--side-w)); }
-  .side { background: #0d1218; border-right: 1px solid var(--hairline); padding: 22px 14px;
-    display: flex; flex-direction: column; gap: 4px; position: sticky; top: 0; height: 100vh;
-    align-self: start; }
-  .logo { display: flex; align-items: center; gap: 10px; font-weight: 700; letter-spacing: 0.24em;
-    margin: 0 8px 22px; }
-  .logo img { width: 28px; height: 28px; border-radius: 7px; flex: none; }
-  a.logo { color: inherit; text-decoration: none; }
-  .nav { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: 10px;
-    color: var(--muted); text-decoration: none; font-size: 15px; }
-  .nav:hover { color: var(--ink); background: rgba(255, 255, 255, 0.03); }
-  .nav.on { color: var(--ink); background: rgba(255, 122, 26, 0.12); }
-  .nav.on svg { color: var(--power); }
-  .nav svg { width: 16px; height: 16px; flex: none; }
-  .rider { margin-top: auto; display: flex; gap: 10px; align-items: center; padding: 10px;
-    border: 1px solid var(--hairline); border-radius: 12px; background: var(--surface); }
-  .avatar { width: 32px; height: 32px; border-radius: 50%; background: var(--power); color: #140a02;
-    display: grid; place-items: center; font-weight: 700; flex: none; }
-  main.view, .sum-wrap { padding: var(--pad-y) var(--pad-x); max-width: calc(var(--content-max) + 2 * var(--pad-x));
-    width: 100%; margin: 0 auto; }
-  .head { display: flex; justify-content: space-between; align-items: center; gap: 12px 20px;
-    margin-bottom: 24px; flex-wrap: wrap; min-height: 56px; }
-  .head > div:first-child { flex: 1 1 320px; min-width: 0; }
-  .head p { margin-top: 4px; }
-  h1 { font-size: 26px; font-weight: 600; line-height: 1.2; }
-  h2 { font-size: 17px; font-weight: 600; }
-  .stack { display: grid; gap: 12px; }
-  .row { display: flex; align-items: center; gap: 14px; }
+  .btn { font: 600 15px var(--sans); background: var(--card); border: 1px solid var(--hairline);
+    border-radius: 12px; padding: 11px 20px; cursor: pointer; text-decoration: none; color: var(--ink);
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px; white-space: nowrap; }
+  .btn:hover { border-color: #cfd3da; }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+  .btn.primary:hover { background: #2f39cc; }
+  .btn.strava { background: var(--strava); border-color: var(--strava); color: #fff; }
+  .btn.strava:hover { background: #e34402; }
+  .btn:disabled { opacity: 0.5; cursor: default; }
+  .btn.small { padding: 7px 14px; font-size: 14px; border-radius: 10px; }
+  .btn svg { width: 16px; height: 16px; }
+  .pill { display: inline-flex; align-items: center; font: 600 13px var(--sans); padding: 5px 12px;
+    border-radius: 999px; background: var(--track); color: var(--secondary); white-space: nowrap; }
+  .pill.ok { color: var(--success); background: #e6f4ea; } .pill.ok .dot { background: var(--success); }
+  .pill.wait { color: var(--warn); background: #fbefdc; } .pill.wait .dot { background: #e08a0e; }
+  .pill.accent { color: var(--accent); background: var(--accent-soft); }
+  .card { background: var(--card); border: 1px solid var(--hairline); border-radius: var(--r-card); padding: 24px; }
+  input[type=text], input[type=number], input[type=password], select {
+    background: var(--card); border: 1px solid var(--hairline); border-radius: 10px; padding: 10px 12px;
+    width: 100%; font-size: 15px; color: var(--ink); }
+  select { appearance: none; padding-right: 36px; cursor: pointer;
+    background: var(--card) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' fill='none' stroke='%234a5260' stroke-width='1.6'%3E%3Cpath d='M1 1.5l5 5 5-5'/%3E%3C/svg%3E") no-repeat right 14px center; }
+  select:disabled { cursor: default; color: var(--faint); }
+  input:focus-visible, select:focus-visible, .btn:focus-visible, .pick:focus-visible, .nav:focus-visible,
+  .seg button:focus-visible, tr.click:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  /* Top bar */
+  .topbar { position: sticky; top: 0; z-index: 10; height: var(--top-h); background: var(--card);
+    border-bottom: 1px solid var(--hairline); display: flex; align-items: center; gap: 24px; padding: 0 var(--pad); }
+  .brand { display: flex; align-items: center; gap: 12px; text-decoration: none; flex: none;
+    font: 500 22px/1 var(--display); letter-spacing: -0.01em; }
+  .brand img { width: 34px; height: 34px; border-radius: 9px; display: block; }
+  .navs { display: flex; gap: 4px; overflow-x: auto; scrollbar-width: none; min-width: 0; flex: 1; }
+  .navs::-webkit-scrollbar { display: none; }
+  .nav { padding: 8px 14px; border-radius: 10px; color: var(--secondary); text-decoration: none;
+    font-weight: 500; font-size: 15px; white-space: nowrap; }
+  .nav:hover { color: var(--ink); background: var(--ground); }
+  .nav.on { color: var(--accent); background: var(--accent-soft); }
+  .top-meta { color: var(--secondary); font-size: 15px; white-space: nowrap; flex: none; }
+
+  main.view, .sum-wrap { max-width: calc(var(--content) + 2 * var(--pad)); margin: 0 auto; padding: 40px var(--pad) 56px; }
+  main.view.narrow { max-width: calc(var(--narrow) + 2 * var(--pad)); }
+  .head { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px 24px;
+    margin-bottom: 24px; flex-wrap: wrap; }
+  .head > div:first-child { flex: 1 1 360px; min-width: 0; }
+  .head p { margin-top: 12px; color: var(--secondary); font-size: 17px; max-width: 480px; }
+  .stack { display: grid; gap: 16px; }
+  .row { display: flex; align-items: center; gap: 16px; }
   .grow { flex: 1; min-width: 0; }
-  .icon { width: 40px; height: 40px; border-radius: 10px; display: grid; place-items: center;
-    background: var(--elevated); flex: none; }
-  .icon svg { width: 18px; height: 18px; }
-  .seg { display: inline-flex; background: var(--ground); border: 1px solid var(--hairline);
-    border-radius: 999px; padding: 3px; }
-  .seg button { border: 0; background: none; padding: 6px 14px; border-radius: 999px;
-    cursor: pointer; font-size: 13px; font-weight: 600; color: var(--muted); }
-  .seg button.on { background: var(--power); color: #140a02; }
-  .seg button:disabled { cursor: not-allowed; opacity: 0.6; }
-  .grid3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
-  .pick { cursor: pointer; text-align: left; width: 100%; color: inherit; font: inherit;
-    transition: border-color 0.15s; }
-  .pick:hover { border-color: rgba(255, 255, 255, 0.18); }
-  .pick.on { border-color: var(--power); }
-  .bars { display: flex; align-items: flex-end; gap: 2px; height: 44px; margin-bottom: 12px; }
-  .bars i { display: block; border-radius: 2px; min-width: 2px; }
-  .stats3 { display: flex; gap: 18px; margin-top: 10px; }
-  .stats3 .num { font-size: 20px; }
-  .profile { width: 100%; height: 56px; display: block; margin-bottom: 12px; }
-  .footer-bar { display: flex; justify-content: space-between; align-items: center; gap: 12px;
-    margin-top: 16px; flex-wrap: wrap; }
-  .form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 18px; }
-  .form label { display: grid; gap: 6px; font-size: 13px; color: var(--muted); align-content: start; }
+  .seg { display: inline-flex; background: var(--track); border-radius: 999px; padding: 4px; }
+  .seg button { border: 0; background: none; padding: 8px 18px; border-radius: 999px; cursor: pointer;
+    font-size: 15px; font-weight: 500; color: var(--secondary); }
+  .seg button.on { background: var(--card); color: var(--ink); font-weight: 600; box-shadow: 0 0 0 1px var(--hairline); }
+  .grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+  .grid3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+
+  /* Pairing */
+  .device { display: flex; align-items: center; gap: 18px; padding: 20px 22px; }
+  .device.empty { border-style: dashed; background: #fafbfc; }
+  .device.empty .icon { background: var(--track) !important; color: var(--faint) !important; }
+  .icon { width: 50px; height: 50px; border-radius: 12px; display: grid; place-items: center; flex: none; }
+  .icon svg { width: 20px; height: 20px; }
+  .device-title { font-weight: 500; font-size: 18px; line-height: 1.3; }
+  .device select { border: 0; padding: 2px 28px 2px 0; background-color: transparent; background-position: right 4px center;
+    color: var(--secondary); font-size: 15px; width: auto; max-width: 100%; }
+  .info { color: var(--secondary); font-size: 15px; }
+  .rider { display: flex; align-items: center; gap: 18px; padding: 20px 22px; flex-wrap: wrap; }
+  .avatar { width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; color: #fff;
+    font-weight: 600; background: linear-gradient(135deg, var(--accent), var(--distance)); flex: none; }
+  .form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px 20px; }
+  .form label { display: grid; gap: 8px; font-size: 14px; color: var(--secondary); align-content: start; font-weight: 500; }
+  .form .hint { color: var(--faint); font-size: 13px; font-weight: 400; }
   .form .wide { grid-column: 1 / -1; }
-  .form .hint { color: var(--faint); font-size: 12px; }
-  table { width: 100%; border-collapse: collapse; font-size: 14px; }
-  th { text-align: left; font: 600 11px/1 var(--sans); letter-spacing: 0.12em; text-transform: uppercase;
-    color: var(--faint); padding: 10px 12px; border-bottom: 1px solid var(--hairline); }
-  td { padding: 12px; border-bottom: 1px solid var(--hairline); }
-  td.nowrap, th { white-space: nowrap; }
+
+  /* Pickers */
+  .pick { cursor: pointer; text-align: left; width: 100%; font: inherit; color: inherit; padding: 20px 22px; }
+  .pick:hover { border-color: #cfd3da; }
+  .pick.on { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+  .bars { display: flex; align-items: flex-end; gap: 3px; height: 48px; margin-bottom: 16px; }
+  .bars i { display: block; border-radius: 3px; min-width: 2px; }
+  .pick-title { display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 17px; }
+  .stats3 { display: flex; gap: 24px; margin-top: 14px; }
+  .stats3 .num { font-size: 22px; }
+  .stats3 .label { font-size: 10px; margin-top: 4px; }
+  .profile { width: 100%; height: 64px; display: block; margin-bottom: 14px; }
+  .footer-bar { display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 15px; }
+  th { text-align: left; font: 600 12px/1 var(--sans); letter-spacing: 0.12em; text-transform: uppercase;
+    color: var(--secondary); padding: 16px 20px; border-bottom: 1px solid var(--hairline); white-space: nowrap; }
+  td { padding: 14px 20px; border-bottom: 1px solid var(--hairline); font-variant-numeric: tabular-nums; }
   tbody tr:last-child td { border-bottom: 0; }
-  tbody tr.click { cursor: pointer; }
-  tbody tr.click:hover { background: rgba(255, 255, 255, 0.02); }
-  .empty { padding: 40px; text-align: center; color: var(--muted); }
-  .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 50;
-    background: var(--elevated); border: 1px solid var(--hairline); border-radius: 12px;
-    padding: 12px 18px; font-size: 14px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
-    max-width: calc(100% - 32px); }
-  .toast.bad { border-color: var(--hr); }
-  .hide-sm { }
+  td.nowrap { white-space: nowrap; }
+  tr.click { cursor: pointer; } tr.click:hover td { background: #fafbfc; }
+  .table-card { padding: 0; overflow-x: auto; }
+  .empty-row { padding: 48px 20px; text-align: center; color: var(--secondary); }
+  .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); z-index: 50; background: var(--ink);
+    color: #fff; border-radius: 12px; padding: 12px 18px; font-size: 15px; max-width: calc(100% - 32px); }
+  .toast.bad { background: var(--danger); }
 
   /* Ride HUD */
-  #world { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
-  .hud { position: fixed; inset: 0; padding: 24px; display: grid; grid-template-rows: auto 1fr auto auto;
-    grid-template-columns: minmax(0, 1fr); gap: 16px; }
-  .panel { background: var(--panel); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
-    border: 1px solid var(--hairline); border-radius: 14px; padding: 14px 18px; }
-  .top { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; }
-  #elapsed { font-size: 40px; margin-top: 6px; }
-  .sub { color: var(--muted); font-size: 13px; margin-top: 4px; }
-  .sub .dot { background: var(--power); }
-  .center-ctl { display: flex; flex-direction: column; align-items: center; gap: 10px; }
-  #status { font-size: 12px; color: var(--muted); padding: 6px 12px; border-radius: 999px;
-    background: var(--panel); border: 1px solid var(--hairline); }
-  #status.live .dot { background: var(--success); }
-  #status.off .dot { background: var(--warn); }
-  #released { background: rgba(250, 204, 21, 0.14); color: var(--warn); }
-  .hcard { width: min(330px, 100%); }
-  .hcard-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
-  #card-note { font-size: 12px; color: var(--ink); font-weight: 600; }
-  #card-title { font-weight: 600; font-size: 18px; margin: 4px 0 2px; }
-  .card-row { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
-  #card-value { font-size: 34px; color: var(--power); }
-  #card-time { font-size: 26px; }
-  .bar { height: 6px; border-radius: 999px; background: var(--elevated); margin-top: 10px; overflow: hidden; }
-  .bar > i { display: block; height: 100%; width: 0; background: var(--power); border-radius: inherit;
-    transition: width 0.25s linear; }
-  .power { align-self: end; }
-  #power { font-size: clamp(96px, 16vw, 168px); color: var(--power); }
-  #power .unit { font-size: 28px; }
-  .zone-row { display: flex; align-items: center; gap: 12px; margin-top: 8px; color: var(--muted);
-    font-size: 13px; flex-wrap: wrap; }
-  #zone { font-weight: 600; font-size: 12px; letter-spacing: 0.06em; color: var(--ink); padding: 3px 10px;
-    border-radius: 999px; border: 1px solid var(--z1); background: rgba(255, 255, 255, 0.04); }
-  .zones { display: flex; gap: 4px; margin-top: 12px; }
-  .zones i { width: 28px; height: 5px; border-radius: 999px; background: var(--elevated); }
-  .elev-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
-  #grade { font-family: var(--condensed); font-weight: 700; font-size: 22px; color: var(--power);
-    margin-left: 8px; letter-spacing: 0; }
-  #elev { width: 100%; height: 56px; display: block; margin-top: 6px; }
-  .dock { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
-  .dock .num { font-size: clamp(36px, 5vw, 52px); margin-top: 18px; }
-  #m-cad .dot { background: var(--cadence); } #m-hr .dot { background: var(--hr); }
-  #m-spd .dot { background: var(--speed); } #m-dist .dot { background: var(--distance); }
+  .ride-top { justify-content: space-between; }
+  .ride-title { color: var(--secondary); font-size: 17px; text-align: center; flex: 1; min-width: 0;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .rec { display: flex; align-items: center; gap: 14px; flex: none; }
+  .rec-state { color: var(--success); font-size: 15px; display: flex; align-items: center; }
+  .rec-state .dot { background: var(--success); }
+  .rec-state.off { color: var(--warn); } .rec-state.off .dot { background: #e08a0e; }
+  #elapsed { font-size: 26px; }
+  .hud { max-width: 1400px; margin: 0 auto; padding: 20px var(--pad) 28px; display: grid; gap: 20px; }
+  .strip { display: grid; grid-template-columns: minmax(150px, 210px) minmax(0, 1fr) auto; align-items: center;
+    gap: 28px; padding: 18px 24px; }
+  .strip-name { font: 600 20px/1.25 var(--display); margin-top: 6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .strip-bars { position: relative; height: 52px; display: flex; align-items: flex-end; gap: 5px; }
+  .strip-bars i { display: block; border-radius: 3px; min-width: 2px; }
+  .strip-cursor { position: absolute; top: -4px; bottom: -4px; width: 2px; background: var(--ink); border-radius: 1px; }
+  .strip-track { height: 10px; border-radius: 999px; background: var(--track); overflow: hidden; }
+  .strip-track i { display: block; height: 100%; width: 0; background: var(--accent); border-radius: inherit; }
+  .strip-right { text-align: right; }
+  #strip-value { font-size: 26px; color: var(--accent); }
+  #strip-note { color: var(--secondary); font-size: 15px; margin-top: 6px; white-space: nowrap; }
+  #released { margin-top: 8px; }
+  .hud-main { display: grid; grid-template-columns: minmax(300px, 1fr) minmax(0, 1fr) minmax(0, 1fr); grid-template-rows: 1fr 1fr; gap: 20px; }
+  .power-card { grid-row: 1 / 3; display: flex; flex-direction: column; padding: 24px 28px; }
+  .ring-wrap { position: relative; flex: 1; display: grid; place-items: center; padding: 16px 0; }
+  .ring { width: min(100%, 300px); aspect-ratio: 1; display: block; }
+  .ring-center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+  #power-v { font-size: clamp(56px, 6vw, 80px); }
+  .watts { margin: 6px 0 12px; }
+  #zone { font-size: 14px; }
+  .power-foot { display: flex; justify-content: center; color: var(--secondary); font-size: 15px; }
+  .power-foot span { padding: 0 clamp(10px, 1.6vw, 24px); border-left: 1px solid var(--hairline); white-space: nowrap; }
+  .power-foot span:first-child { border-left: 0; }
+  .metric { display: flex; flex-direction: column; justify-content: space-between; min-height: 200px; padding: 24px 28px; }
+  .metric .num { font-size: clamp(48px, 5vw, 64px); }
+  .metric .unit { font-size: 17px; }
+  .m-cad .dot { background: var(--cadence); } .m-hr .dot { background: var(--hr); }
+  .m-spd .dot { background: var(--speed); } .m-dist .dot { background: var(--distance); }
+  .elev-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+  #grade { font: 700 22px var(--display); color: var(--accent); margin-left: 10px; letter-spacing: 0; }
+  #elev { width: 100%; height: 64px; display: block; margin-top: 10px; }
+  .elev-card { padding: 20px 24px; }
 
   /* Summary */
-  /* The summary sits in the content area, so the navigation stays put. */
-  .summary { position: fixed; top: 0; right: 0; bottom: 0; left: var(--side-w);
-    background: var(--ground); overflow: auto; z-index: 20; }
-  .sum-wrap { display: grid; gap: 16px; }
-  .sum-head { display: flex; align-items: center; gap: 12px 14px; flex-wrap: wrap; margin-bottom: 8px; }
-  .sum-head .grow { flex: 1 1 280px; }
-  .sum-head .sub { margin-top: 4px; }
-  .check { width: 36px; height: 36px; border-radius: 10px; display: grid; place-items: center;
-    background: rgba(52, 211, 153, 0.15); color: var(--success); font-weight: 700; flex: none; }
-  .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 12px; }
-  .tile { background: var(--surface); border: 1px solid var(--hairline); border-radius: 12px; padding: 14px 16px; }
+  .sum-head { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; margin-bottom: 4px; }
+  .check { width: 44px; height: 44px; border-radius: 12px; display: grid; place-items: center; background: #e6f4ea; color: var(--success); flex: none; }
+  .check svg { width: 20px; height: 20px; }
+  .sum-head h1 { font-size: 26px; }
+  .actions { display: flex; gap: 10px; flex-wrap: wrap; }
+  .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 16px; }
+  .tile { padding: 18px 22px; }
   .tile .num { font-size: 34px; margin-top: 8px; }
-  .sum-body { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: 16px; }
-  #chart { width: 100%; height: 260px; display: block; margin-top: 10px; }
-  .meter { display: grid; grid-template-columns: 64px minmax(0, 1fr) 44px; gap: 10px; align-items: center;
-    font-size: 13px; color: var(--muted); margin-top: 8px; }
-  .meter .track { height: 5px; border-radius: 999px; background: var(--elevated); overflow: hidden; }
+  .sum-body { display: grid; grid-template-columns: minmax(0, 1.8fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+  .chart-card { padding: 22px 24px; }
+  #chart { width: 100%; height: 300px; display: block; margin-top: 14px; }
+  .legend { color: var(--secondary); font-size: 14px; }
+  .legend b { color: var(--accent); font-weight: 500; }
+  #s-if { font-size: 44px; color: var(--accent); }
+  .meter { display: grid; grid-template-columns: 64px minmax(0, 1fr) 44px; gap: 14px; align-items: center; font-size: 14px;
+    color: var(--secondary); margin-top: 12px; }
+  .meter .track { height: 6px; border-radius: 999px; background: var(--track); overflow: hidden; }
   .meter .track i { display: block; height: 100%; border-radius: inherit; }
-  .meter b { color: var(--ink); text-align: right; font-weight: 600; }
-  .kv { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-  .kv .num { font-size: 24px; margin-top: 6px; }
-  .uploads { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+  .meter b { color: var(--ink); text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .kv { display: grid; grid-template-columns: 1fr 1fr; gap: 20px 16px; }
+  .kv .num { font-size: 26px; margin-top: 6px; }
+  .note { color: var(--secondary); font-size: 14px; }
 
-  @media (max-width: 1024px) {
-    :root { --pad-x: 24px; --pad-y: 24px; }
-    .shell { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto 1fr; align-content: start;
-      background: none; }
-    .summary { left: 0; top: 57px; }
-    .side { position: sticky; top: 0; z-index: 10; height: 57px; flex-direction: row; align-items: center;
-      gap: 4px; padding: 10px var(--pad-x); border-right: 0; border-bottom: 1px solid var(--hairline);
-      overflow-x: auto; scrollbar-width: none; }
-    .side::-webkit-scrollbar { display: none; }
-    .logo { margin: 0 14px 0 0; flex: none; }
-    .nav { padding: 7px 12px; font-size: 14px; flex: none; }
-    .rider { display: none; }
-    .grid3 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  @media (max-width: 1100px) {
+    .hud-main { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: none; }
+    .power-card { grid-row: auto; grid-column: 1 / -1; }
+    .ring { width: min(100%, 260px); }
     .sum-body { grid-template-columns: minmax(0, 1fr); }
   }
-  @media (max-width: 760px) {
-    :root { --pad-x: 16px; --pad-y: 20px; }
-    .logo span { display: none; }
-    .grid3, .form { grid-template-columns: minmax(0, 1fr); }
-    .card.row { flex-wrap: wrap; }
-    .card.row > .pill { order: -1; margin-left: auto; }
-    .card.row > .grow { flex-basis: 100%; }
-    .card.row > .icon { display: none; }
+  @media (max-width: 900px) {
+    :root { --pad: 24px; }
+    .grid3 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .top-meta { display: none; }
+    .strip { grid-template-columns: minmax(0, 1fr) auto; row-gap: 16px; }
+    .strip-bars, .strip-track { grid-column: 1 / -1; grid-row: 2; }
+  }
+  @media (max-width: 640px) {
+    :root { --pad: 16px; --top-h: 56px; }
+    h1 { font-size: 28px; }
+    .brand span { display: none; }
+    .topbar { gap: 12px; }
+    main.view, .sum-wrap { padding-top: 24px; }
+    .head p { font-size: 16px; }
+    .grid2, .grid3, .form { grid-template-columns: minmax(0, 1fr); }
+    .card { padding: 18px; }
+    .rider .btn { width: 100%; }
+    .device { display: grid; grid-template-columns: 50px minmax(0, 1fr); column-gap: 16px; row-gap: 10px; }
+    .device .pill { grid-column: 2; justify-self: start; }
+    .metric { min-height: 140px; padding: 18px 20px; }
+    .power-foot span { padding: 0 12px; }
+    .ride-title { display: none; }
+    #elapsed { font-size: 22px; }
+    .actions { width: 100%; display: grid; grid-template-columns: 1fr 1fr; }
+    .actions .btn:first-child { grid-column: 1 / -1; }
     .tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .tiles .tile:last-child:nth-child(odd) { grid-column: 1 / -1; }
-    .uploads { width: 100%; display: grid; grid-template-columns: 1fr 1fr; }
-    .uploads .btn { justify-content: center; }
-    .hud { padding: 16px; gap: 12px; }
-    .top { flex-direction: column; align-items: stretch; gap: 12px; }
-    .hcard { width: 100%; }
-    #elapsed { font-size: 32px; }
-    .center-ctl { flex-direction: row; justify-content: space-between; }
-    .dock { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .hide-sm { display: none; }
+    th, td { padding: 12px 14px; }
   }
 </style>
 </head>
 <body>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
-  <symbol id="i-bike" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="5.5" cy="17.5" r="3.5"/><circle cx="18.5" cy="17.5" r="3.5"/><path d="M15 6a1 1 0 1 0 0-2 1 1 0 0 0 0 2zM12 17.5V14l-3-3 4-3 2 3h2"/></symbol>
-  <symbol id="i-bolt" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></symbol>
+  <symbol id="i-bike" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="5.5" cy="17" r="3.5"/><circle cx="18.5" cy="17" r="3.5"/><path d="M5.5 17 9 9h6l3.5 8M9 9 7.5 6H6M15 9l-3 8"/></symbol>
+  <symbol id="i-pulse" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12h4l2.5-6 4 12 3-8 1.5 2H22"/></symbol>
   <symbol id="i-heart" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 14c1.5-1.5 3-3.2 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.8 0-3 .5-4.5 2-1.5-1.5-2.7-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4 3 5.5l7 7z"/></symbol>
-  <symbol id="i-dumbbell" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 7v10M18 7v10M3 10v4M21 10v4M6 12h12"/></symbol>
-  <symbol id="i-map" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2zM9 4v14M15 6v14"/></symbol>
-  <symbol id="i-clock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
-  <symbol id="i-gear" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/></symbol>
+  <symbol id="i-cadence" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="8"/><path d="M12 12l4-3"/></symbol>
+  <symbol id="i-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></symbol>
+  <symbol id="i-strava" viewBox="0 0 24 24" fill="currentColor"><path d="M9.8 2 4 13.3h3.4l2.4-4.6 2.3 4.6h3.4zM15.6 13.3l-1.7 3.3-1.7-3.3H9.6l4.3 8.7 4.3-8.7z"/></symbol>
 </svg>
 
-<!-- ============ App shell (when not riding) ============ -->
-<div class="shell" id="shell">
-  <nav class="side" aria-label="Main">
-    <a class="logo" href="#ride" aria-label="Rullo home"><img src="/logo.svg" alt="" width="28" height="28"><span>RULLO</span></a>
-    <a class="nav" href="#ride" data-view="ride"><svg><use href="#i-bike"/></svg>Ride</a>
-    <a class="nav" href="#workouts" data-view="workouts"><svg><use href="#i-dumbbell"/></svg>Workouts</a>
-    <a class="nav" href="#routes" data-view="routes"><svg><use href="#i-map"/></svg>Routes</a>
-    <a class="nav" href="#history" data-view="history"><svg><use href="#i-clock"/></svg>History</a>
-    <a class="nav" href="#settings" data-view="settings"><svg><use href="#i-gear"/></svg>Settings</a>
-    <div class="rider"><div class="avatar">R</div>
-      <div><div style="font-weight:600;font-size:14px">Rider</div><div class="faint small" id="rider-meta"></div></div></div>
-  </nav>
+<!-- ============ App (when not riding) ============ -->
+<div id="app">
+  <header class="topbar">
+    <a class="brand" href="#ride" aria-label="Rullo home"><img src="/logo.svg" alt="" width="34" height="34"><span>rullo</span></a>
+    <nav class="navs" aria-label="Main">
+      <a class="nav" href="#ride" data-view="ride">Ride</a>
+      <a class="nav" href="#workouts" data-view="workouts">Workouts</a>
+      <a class="nav" href="#routes" data-view="routes">Routes</a>
+      <a class="nav" href="#history" data-view="history">History</a>
+      <a class="nav" href="#settings" data-view="settings">Settings</a>
+    </nav>
+    <span class="top-meta" id="top-meta"></span>
+  </header>
 
   <!-- Ride: pair sensors and set up the session -->
-  <main class="view" id="v-ride" hidden>
+  <main class="view narrow" id="v-ride" hidden>
     <div class="head">
       <div><h1>Pair your sensors</h1>
-        <p class="muted small">Trainers, heart-rate straps and cadence sensors over Bluetooth or ANT+. Everything runs locally.</p></div>
+        <p>Rullo connects over Bluetooth or ANT+, and runs entirely on your machine — no account required.</p></div>
       <div class="seg" role="group" aria-label="Radio to scan">
         <button class="on" type="button" data-radio="bluetooth" aria-pressed="true">Bluetooth</button>
         <button type="button" data-radio="ant" aria-pressed="false">ANT+</button>
       </div>
     </div>
     <div class="stack">
-      <div class="card row">
-        <div class="icon" style="color:var(--power)"><svg><use href="#i-bike"/></svg></div>
-        <div class="grow"><div style="font-weight:600">Smart trainer <span class="pill tag" id="trainer-tag">FTMS · controllable</span></div>
-          <select id="trainer" aria-label="Smart trainer" style="margin-top:8px;max-width:420px"></select></div>
-        <span class="pill ok" id="trainer-state"><span class="dot"></span>Ready</span>
+      <div class="grid2">
+        <div class="card device" id="d-trainer">
+          <div class="icon" style="background:var(--accent-soft);color:var(--accent)"><svg><use href="#i-bike"/></svg></div>
+          <div class="grow"><div class="device-title">Smart trainer</div>
+            <select id="trainer" aria-label="Smart trainer"></select></div>
+          <span class="pill ok" id="trainer-state"><span class="dot"></span>Ready</span>
+        </div>
+        <div class="card device" id="d-power">
+          <div class="icon" style="background:#e3f5f5;color:var(--cadence)"><svg><use href="#i-pulse"/></svg></div>
+          <div class="grow"><div class="device-title">Power</div><div class="info" id="power-src">From trainer</div></div>
+          <span class="pill ok" id="power-state"><span class="dot"></span>From trainer</span>
+        </div>
+        <div class="card device" id="d-hr">
+          <div class="icon" style="background:#fdecec;color:var(--hr)"><svg><use href="#i-heart"/></svg></div>
+          <div class="grow"><div class="device-title">Heart rate</div>
+            <select id="hr" aria-label="Heart-rate strap"></select></div>
+          <span class="pill" id="hr-state"><span class="dot"></span>Optional</span>
+        </div>
+        <div class="card device" id="d-cad">
+          <div class="icon" style="background:#fdf1e0;color:var(--speed)"><svg><use href="#i-cadence"/></svg></div>
+          <div class="grow"><div class="device-title">Cadence sensor</div>
+            <select id="cad-sel" aria-label="Cadence sensor"></select></div>
+          <span class="pill" id="cad-state"><span class="dot"></span>Optional</span>
+        </div>
       </div>
-      <div class="card row">
-        <div class="icon" style="color:var(--cadence)"><svg><use href="#i-bolt"/></svg></div>
-        <div class="grow"><div style="font-weight:600">Cadence</div>
-          <select id="cad-sel" aria-label="Cadence sensor" style="margin-top:8px;max-width:420px"></select>
-          <div class="faint small" id="power-src" style="margin-top:6px"></div></div>
-        <span class="pill" id="cad-state"><span class="dot"></span>Optional</span>
-      </div>
-      <div class="card row">
-        <div class="icon" style="color:var(--hr)"><svg><use href="#i-heart"/></svg></div>
-        <div class="grow"><div style="font-weight:600">Heart rate</div>
-          <select id="hr" aria-label="Heart-rate strap" style="margin-top:8px;max-width:420px"></select></div>
-        <span class="pill" id="hr-state"><span class="dot"></span>Optional</span>
-      </div>
-      <div class="row" style="gap:10px;flex-wrap:wrap">
+      <div class="row" style="gap:14px;flex-wrap:wrap">
         <button class="btn" id="scan" type="button">Scan for Bluetooth devices</button>
         <span class="small muted" id="scan-note"></span>
       </div>
 
-      <div class="card" style="margin-top:12px">
-        <h2 style="margin-bottom:12px">Your session</h2>
+      <div class="card">
+        <div class="footer-bar" style="margin-bottom:18px"><h2>Session</h2><span class="small muted" id="session-note"></span></div>
         <div class="form">
-          <label>Route
-            <select id="route-sel"></select></label>
-          <label>Workout
-            <select id="workout-sel"></select></label>
+          <label>Route<select id="route-sel"></select></label>
+          <label>Workout<select id="workout-sel"></select></label>
           <label id="mode-wrap">Mode
             <select id="mode-sel">
               <option value="sim">SIM · gradient sets resistance</option>
               <option value="erg">ERG · hold a fixed power</option>
               <option value="free">Free · no resistance control</option>
             </select></label>
-          <label id="target-wrap" hidden>ERG target (W)
-            <input type="number" id="target" min="50" max="1500" value="200"></label>
-          <label id="duration-wrap">Duration in minutes (optional)
-            <input type="number" id="duration" min="1" max="600" placeholder="Ride until stopped"></label>
+          <label id="target-wrap" hidden>ERG target (W)<input type="number" id="target" min="50" max="1500" value="200"></label>
+          <label id="duration-wrap">Duration in minutes (optional)<input type="number" id="duration" min="1" max="600" placeholder="Ride until stopped"></label>
         </div>
-        <div class="footer-bar">
-          <span class="small muted" id="session-note"></span>
-          <div class="row" style="gap:10px">
-            <a class="btn" href="#workouts">Pick a workout</a>
-            <button class="btn primary" id="start" type="button">Start ride →</button>
-          </div>
-        </div>
+      </div>
+
+      <div class="card rider">
+        <div class="avatar">R</div>
+        <div class="grow"><div class="device-title">Rider</div>
+          <div class="info" id="rider-meta"></div></div>
+        <button class="btn primary" id="start" type="button">Start ride <svg><use href="#i-arrow"/></svg></button>
       </div>
     </div>
   </main>
@@ -328,21 +342,23 @@
   <!-- Workouts -->
   <main class="view" id="v-workouts" hidden>
     <div class="head">
-      <div><h1>Workouts</h1><p class="muted small">Structured sessions run in ERG mode: the trainer holds each target for you.</p></div>
+      <div><h1>Workouts</h1><p>Structured sessions run in ERG mode: the trainer holds each target for you.</p></div>
       <label class="btn">Import .zwo<input type="file" id="zwo-file" accept=".zwo,.xml" hidden></label>
     </div>
-    <div class="grid3" id="workout-grid"></div>
-    <div class="card footer-bar" id="workout-bar">
-      <div><div style="font-weight:600" id="wbar-name">No workout</div><div class="small faint" id="wbar-meta">Ride a route in SIM mode</div></div>
-      <div class="row" style="gap:10px"><button class="btn" id="wbar-clear" type="button">Free ride instead</button>
-        <a class="btn primary" href="#ride">Set up ride →</a></div>
+    <div class="stack">
+      <div class="grid3" id="workout-grid"></div>
+      <div class="card footer-bar">
+        <div><div class="device-title" id="wbar-name">No workout</div><div class="info" id="wbar-meta">Ride a route in SIM mode</div></div>
+        <div class="row" style="gap:10px;flex-wrap:wrap"><button class="btn" id="wbar-clear" type="button">Free ride instead</button>
+          <a class="btn primary" href="#ride">Set up ride <svg><use href="#i-arrow"/></svg></a></div>
+      </div>
     </div>
   </main>
 
   <!-- Routes -->
   <main class="view" id="v-routes" hidden>
     <div class="head">
-      <div><h1>Routes</h1><p class="muted small">Courses loop forever; one-way GPX tracks are ridden out and back.</p></div>
+      <div><h1>Routes</h1><p>Courses loop forever; one-way GPX tracks are ridden out and back.</p></div>
       <label class="btn">Import GPX<input type="file" id="gpx-file" accept=".gpx,.xml" hidden></label>
     </div>
     <div class="grid3" id="route-grid"></div>
@@ -350,43 +366,43 @@
 
   <!-- History -->
   <main class="view" id="v-history" hidden>
-    <div class="head"><div><h1>History</h1><p class="muted small">Every ride is saved as a .fit file first; uploads are on top.</p></div></div>
-    <div class="card" style="padding:0;overflow-x:auto"><table>
+    <div class="head"><div><h1>History</h1><p>Every ride is saved as a .fit file first; uploads come on top.</p></div></div>
+    <div class="card table-card"><table>
       <thead><tr><th>Date</th><th>Ride</th><th>Time</th><th>Distance</th><th class="hide-sm">NP</th><th class="hide-sm">TSS</th><th class="hide-sm">Uploaded</th></tr></thead>
       <tbody id="history-rows"></tbody></table></div>
   </main>
 
   <!-- Settings -->
-  <main class="view" id="v-settings" hidden>
-    <div class="head"><div><h1>Settings</h1><p class="muted small">Stored on this computer only.</p></div></div>
+  <main class="view narrow" id="v-settings" hidden>
+    <div class="head"><div><h1>Settings</h1><p>Stored on this computer only.</p></div></div>
     <form id="settings-form" class="stack" autocomplete="off">
-      <div class="card"><h2 style="margin-bottom:12px">Rider</h2><div class="form">
+      <div class="card"><h2 style="margin-bottom:18px">Rider</h2><div class="form">
         <label>Weight, rider + bike (kg)<input type="number" name="mass_kg" step="0.1" min="20" max="250" required></label>
         <label>FTP (W)<input type="number" name="ftp" min="50" max="700" required></label>
       </div></div>
-      <div class="card"><h2 style="margin-bottom:12px">Trainer</h2><div class="form">
+      <div class="card"><h2 style="margin-bottom:18px">Trainer</h2><div class="form">
         <label>Trainer difficulty (%)<input type="number" name="difficulty_pct" min="0" max="100" required>
-          <span class="hint">How much of the real gradient you feel. Zwift's default is 50%.</span></label>
+          <span class="hint">How much of the real gradient you feel. 50% is a common default.</span></label>
         <label>ERG cadence floor (rpm)<input type="number" name="cadence_floor" min="20" max="100" required>
           <span class="hint">Below this, ERG resistance is released so you can recover.</span></label>
         <label>Simulated rider power (W)<input type="number" name="sim_power" min="0" max="1500" required>
           <span class="hint">What the simulated trainer pedals in SIM and Free mode.</span></label>
       </div></div>
-      <div class="card"><h2 style="margin-bottom:4px">Strava</h2>
-        <p class="small muted" style="margin-bottom:12px">Create an API application at
+      <div class="card"><h2>Strava</h2>
+        <p class="small muted" style="margin:8px 0 18px">Create an API application at
           <a href="https://www.strava.com/settings/api" target="_blank" rel="noopener">strava.com/settings/api</a>
           with <b>Authorization Callback Domain</b> set to <code>127.0.0.1</code>, then paste its ID and secret here.</p>
         <div class="form">
           <label>Client ID<input type="text" name="strava_client_id"></label>
-          <label>Client secret<input type="password" name="strava_client_secret" placeholder=""></label>
+          <label>Client secret<input type="password" name="strava_client_secret"></label>
           <div class="wide row" style="gap:10px;flex-wrap:wrap">
             <span class="pill" id="strava-state"><span class="dot"></span>Not connected</span>
             <button class="btn small" type="button" id="strava-connect">Connect Strava</button>
             <button class="btn small" type="button" id="strava-disconnect" hidden>Disconnect</button>
           </div>
         </div></div>
-      <div class="card"><h2 style="margin-bottom:4px">intervals.icu</h2>
-        <p class="small muted" style="margin-bottom:12px">Find your API key under Settings → Developer on intervals.icu.</p>
+      <div class="card"><h2>intervals.icu</h2>
+        <p class="small muted" style="margin:8px 0 18px">Find your API key under Settings → Developer on intervals.icu.</p>
         <div class="form">
           <label>Athlete ID<input type="text" name="intervals_athlete_id"><span class="hint">0 means the athlete who owns the key.</span></label>
           <label>API key<input type="password" name="intervals_api_key"></label>
@@ -394,108 +410,118 @@
       <div><button class="btn primary" type="submit">Save settings</button></div>
     </form>
   </main>
+
+  <!-- Ride summary (inside the app, below the top bar) -->
+  <section id="summary" hidden aria-live="polite">
+    <div class="sum-wrap stack">
+      <div class="sum-head">
+        <div class="check"><svg><use href="#i-check"/></svg></div>
+        <div class="grow"><h1 id="sum-title">Ride complete</h1><div class="muted small" id="sum-sub" style="margin-top:4px"></div></div>
+        <div class="actions">
+          <button class="btn strava" id="up-strava" type="button"><svg><use href="#i-strava"/></svg><span>Upload to Strava</span></button>
+          <button class="btn" id="up-intervals" type="button"><span>Upload to intervals.icu</span></button>
+          <a class="btn" id="save-fit" href="#" download>Save .fit</a>
+        </div>
+      </div>
+      <div class="note" id="sum-note" hidden></div>
+      <div class="tiles">
+        <div class="card tile"><div class="label">Duration</div><div class="num" id="s-dur">–</div></div>
+        <div class="card tile"><div class="label">Distance</div><div class="num"><span id="s-dist">–</span><span class="unit">km</span></div></div>
+        <div class="card tile"><div class="label">Avg power</div><div class="num" style="color:var(--accent)"><span id="s-avgp">–</span><span class="unit">W</span></div></div>
+        <div class="card tile"><div class="label">Norm. power</div><div class="num"><span id="s-np">–</span><span class="unit">W</span></div></div>
+        <div class="card tile"><div class="label">TSS</div><div class="num" id="s-tss">–</div></div>
+      </div>
+      <div class="sum-body">
+        <div class="stack">
+          <div class="card chart-card">
+            <div class="footer-bar"><h2>Power</h2>
+              <span class="legend"><b>● Power</b> &nbsp; – – NP <span id="s-np2"></span> W</span></div>
+            <canvas id="chart"></canvas>
+          </div>
+          <div class="card table-card"><table>
+            <thead><tr><th>Lap</th><th>Time</th><th>Avg W</th><th>NP</th><th>Avg HR</th><th class="hide-sm">Distance</th></tr></thead>
+            <tbody id="laps"></tbody></table></div>
+        </div>
+        <div class="stack">
+          <div class="card">
+            <div class="label">Intensity factor</div>
+            <div class="row" style="gap:12px;align-items:baseline;margin:8px 0 6px"><span class="num" id="s-if">–</span><span class="muted" id="s-if-note"></span></div>
+            <div class="meter"><span>Avg HR</span><span class="track"><i id="b-ahr" style="background:var(--hr)"></i></span><b id="s-ahr">–</b></div>
+            <div class="meter"><span>Max HR</span><span class="track"><i id="b-mhr" style="background:var(--hr)"></i></span><b id="s-mhr">–</b></div>
+            <div class="meter"><span>Max W</span><span class="track"><i id="b-mw" style="background:var(--accent)"></i></span><b id="s-mw">–</b></div>
+          </div>
+          <div class="card kv">
+            <div><div class="label">Elevation</div><div class="num"><span id="s-elev">–</span><span class="unit">m</span></div></div>
+            <div><div class="label">Calories</div><div class="num"><span id="s-kcal">–</span><span class="unit">kcal</span></div></div>
+            <div><div class="label">Avg cadence</div><div class="num"><span id="s-cad">–</span><span class="unit">rpm</span></div></div>
+            <div><div class="label">Work</div><div class="num"><span id="s-work">–</span><span class="unit">kJ</span></div></div>
+          </div>
+          <button class="btn" id="sum-close" type="button" style="width:100%;padding:16px">Done</button>
+        </div>
+      </div>
+    </div>
+  </section>
 </div>
 
 <!-- ============ Ride HUD ============ -->
 <div id="ride" hidden>
-  <canvas id="world" aria-hidden="true"></canvas>
-  <main class="hud">
-    <div class="top">
-      <section class="panel">
-        <div class="label">Elapsed</div>
-        <div id="elapsed" class="num">00:00:00</div>
-        <div class="sub"><span class="dot"></span><span id="ride-sub"></span></div>
-      </section>
-      <div class="center-ctl">
-        <div id="status" class="off"><span class="dot"></span><span id="status-text">Connecting…</span></div>
-        <div id="released" class="pill" hidden>Low cadence · ERG released</div>
-        <button class="btn small" id="end" type="button">End ride</button>
-      </div>
-      <section class="panel hcard">
-        <div class="hcard-head"><span id="card-label" class="label">Ride</span><span id="card-note"></span></div>
-        <div id="card-title">Free ride</div>
-        <div class="card-row">
-          <span><span id="card-value" class="num">–</span><span id="card-unit" class="unit"></span></span>
-          <span id="card-time" class="num">0:00</span>
-        </div>
-        <div class="bar"><i id="card-bar"></i></div>
-      </section>
+  <header class="topbar ride-top">
+    <span class="brand"><img src="/logo.svg" alt="" width="34" height="34"><span>rullo</span></span>
+    <div class="ride-title" id="ride-title"></div>
+    <div class="rec">
+      <span class="rec-state off" id="status"><span class="dot"></span><span id="status-text">Connecting</span></span>
+      <span class="num" id="elapsed">00:00:00</span>
+      <button class="btn small" id="end" type="button">End ride</button>
     </div>
-    <section class="power">
-      <div class="label">Power</div>
-      <div id="power" class="num"><span id="power-v">0</span><span class="unit">W</span></div>
-      <div class="zone-row"><span id="zone">Z1 · RECOVERY</span><span id="wkg">0.0 W/kg · 0% FTP</span>
-        <span id="live-np"></span></div>
-      <div class="zones" id="zones"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+  </header>
+  <main class="hud">
+    <section class="card strip">
+      <div><div class="label" id="strip-label">Ride</div><div class="strip-name" id="strip-name"></div></div>
+      <div class="strip-bars" id="strip-bars" hidden></div>
+      <div class="strip-track" id="strip-track"><i id="strip-progress"></i></div>
+      <div class="strip-right">
+        <div class="num" id="strip-value">–</div>
+        <div id="strip-note"></div>
+        <span class="pill wait" id="released" hidden><span class="dot"></span>Low cadence · ERG released</span>
+      </div>
     </section>
-    <section class="panel">
+    <section class="hud-main">
+      <div class="card power-card">
+        <div class="label">Power</div>
+        <div class="ring-wrap">
+          <svg class="ring" viewBox="0 0 200 200" aria-hidden="true">
+            <circle cx="100" cy="100" r="86" fill="none" stroke="var(--track)" stroke-width="16"/>
+            <circle id="ring-arc" cx="100" cy="100" r="86" fill="none" stroke="var(--accent)" stroke-width="16"
+              stroke-linecap="round" transform="rotate(-90 100 100)" stroke-dasharray="0 541" style="visibility:hidden"/>
+            <circle id="ring-over" cx="100" cy="100" r="70" fill="none" stroke="var(--z6)" stroke-width="5"
+              stroke-linecap="round" transform="rotate(-90 100 100)" stroke-dasharray="0 440" style="visibility:hidden"/>
+          </svg>
+          <div class="ring-center">
+            <span class="num" id="power-v">0</span>
+            <span class="label watts">Watts</span>
+            <span class="pill accent" id="zone">Z1 · Recovery</span>
+          </div>
+        </div>
+        <div class="power-foot"><span id="pct-ftp">0% FTP</span><span id="wkg">0.0 W/kg</span><span id="foot-extra"></span></div>
+      </div>
+      <div class="card metric m-cad"><div class="label"><span class="dot"></span>Cadence</div>
+        <div><span class="num" id="cad">–</span><span class="unit">rpm</span></div></div>
+      <div class="card metric m-hr"><div class="label"><span class="dot"></span>Heart rate</div>
+        <div><span class="num" id="hrv">–</span><span class="unit">bpm</span></div></div>
+      <div class="card metric m-spd"><div class="label"><span class="dot"></span>Speed</div>
+        <div><span class="num" id="spd">0.0</span><span class="unit">km/h</span></div></div>
+      <div class="card metric m-dist"><div class="label"><span class="dot"></span>Distance</div>
+        <div><span class="num" id="dist">0.00</span><span class="unit">km</span></div></div>
+    </section>
+    <section class="card elev-card">
       <div class="elev-head">
-        <span class="label">Elevation · <span id="course-name">No route</span></span>
+        <span class="label">Elevation · <span id="course-name">Flat road</span></span>
         <span class="label">Gradient<span id="grade">+0.0%</span></span>
       </div>
       <canvas id="elev"></canvas>
     </section>
-    <section class="dock">
-      <div class="panel" id="m-cad"><div class="label"><span class="dot"></span>Cadence</div>
-        <div class="num"><span id="cad">–</span><span class="unit">rpm</span></div></div>
-      <div class="panel" id="m-hr"><div class="label"><span class="dot"></span>Heart rate</div>
-        <div class="num"><span id="hrv">–</span><span class="unit">bpm</span></div></div>
-      <div class="panel" id="m-spd"><div class="label"><span class="dot"></span>Speed</div>
-        <div class="num"><span id="spd">0.0</span><span class="unit">km/h</span></div></div>
-      <div class="panel" id="m-dist"><div class="label"><span class="dot"></span>Distance</div>
-        <div class="num"><span id="dist">0.00</span><span class="unit">km</span></div></div>
-    </section>
   </main>
 </div>
-
-<!-- ============ Ride summary ============ -->
-<section class="summary" id="summary" hidden aria-live="polite">
-  <div class="sum-wrap">
-    <div class="sum-head">
-      <div class="check">✓</div>
-      <div class="grow"><h1 id="sum-title">Ride complete</h1><div class="sub" id="sum-sub"></div></div>
-      <div class="uploads">
-        <button class="btn primary" id="up-strava" type="button">Upload to Strava</button>
-        <button class="btn" id="up-intervals" type="button">Upload to intervals.icu</button>
-        <a class="btn" id="save-fit" href="#" download>Save .fit</a>
-        <button class="btn" id="sum-close" type="button">Done</button>
-      </div>
-    </div>
-    <div class="small" id="sum-note" hidden></div>
-    <div class="tiles">
-      <div class="tile"><div class="label">Duration</div><div class="num" id="s-dur">–</div></div>
-      <div class="tile"><div class="label">Distance</div><div class="num"><span id="s-dist">–</span><span class="unit">km</span></div></div>
-      <div class="tile"><div class="label">Avg power</div><div class="num" style="color:var(--power)"><span id="s-avgp">–</span><span class="unit">W</span></div></div>
-      <div class="tile"><div class="label">Norm. power</div><div class="num"><span id="s-np">–</span><span class="unit">W</span></div></div>
-      <div class="tile"><div class="label">TSS</div><div class="num" id="s-tss">–</div></div>
-    </div>
-    <div class="sum-body">
-      <div class="tile">
-        <div class="hcard-head"><span class="label" style="color:var(--ink)">Power</span>
-          <span class="small muted"><span style="color:var(--power)">●</span> Power &nbsp; – – NP <span id="s-np2"></span> W</span></div>
-        <canvas id="chart"></canvas>
-      </div>
-      <div class="stack">
-        <div class="tile">
-          <div class="label">Intensity factor</div>
-          <div class="row" style="gap:10px;align-items:baseline;margin:6px 0 4px"><span class="num" style="font-size:40px;color:var(--success)" id="s-if">–</span><span class="muted small" id="s-if-note"></span></div>
-          <div class="meter"><span>Avg HR</span><span class="track"><i id="b-ahr" style="background:var(--hr)"></i></span><b id="s-ahr">–</b></div>
-          <div class="meter"><span>Max HR</span><span class="track"><i id="b-mhr" style="background:var(--hr)"></i></span><b id="s-mhr">–</b></div>
-          <div class="meter"><span>Max W</span><span class="track"><i id="b-mw" style="background:var(--power)"></i></span><b id="s-mw">–</b></div>
-        </div>
-        <div class="tile kv">
-          <div><div class="label">Elevation</div><div class="num"><span id="s-elev">–</span><span class="unit">m</span></div></div>
-          <div><div class="label">Work</div><div class="num"><span id="s-work">–</span><span class="unit">kJ</span></div></div>
-          <div><div class="label">Avg cadence</div><div class="num"><span id="s-cad">–</span><span class="unit">rpm</span></div></div>
-          <div><div class="label">Avg speed</div><div class="num"><span id="s-avgv">–</span><span class="unit">km/h</span></div></div>
-        </div>
-      </div>
-    </div>
-    <div class="tile" style="padding:0;overflow-x:auto"><table>
-      <thead><tr><th>Lap</th><th>Time</th><th>Avg W</th><th>Max W</th><th>Avg HR</th><th>Distance</th></tr></thead>
-      <tbody id="laps"></tbody></table></div>
-  </div>
-</section>
 
 <div class="toast" id="toast" hidden role="status"></div>
 
@@ -535,6 +561,10 @@ function when(iso) {
     hour: "2-digit", minute: "2-digit" });
 }
 function esc(s) { const d = document.createElement("div"); d.textContent = s ?? ""; return d.innerHTML; }
+function tint(hex, alpha) {
+  const n = parseInt(hex.slice(1), 16);
+  return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${alpha})`;
+}
 
 let toastTimer;
 function toast(msg, bad = false) {
@@ -561,47 +591,56 @@ function fit(canvas) {
   return [ctx, r.width, r.height];
 }
 
+// Elevation profile: ridden part in the accent over a soft fill, the rest as a light line.
 function drawProfile(canvas, profile, pos = null, length = null) {
   const [ctx, w, h] = fit(canvas);
   ctx.clearRect(0, 0, w, h);
+  const accent = css("--accent");
   if (!profile || profile.length < 2) {
-    ctx.strokeStyle = css("--faint"); ctx.lineWidth = 2; ctx.setLineDash([4, 5]);
-    ctx.beginPath(); ctx.moveTo(6, h / 2); ctx.lineTo(w - 6, h / 2); ctx.stroke(); ctx.setLineDash([]);
+    ctx.strokeStyle = css("--hairline"); ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(2, h - 10); ctx.lineTo(w - 2, h - 10); ctx.stroke();
     return;
   }
   const total = length || profile[profile.length - 1][0];
   const eles = profile.map((p) => p[1]);
   const lo = Math.min(...eles), hi = Math.max(...eles), span = Math.max(hi - lo, 20);
-  const x = (d) => 6 + (d / total) * (w - 12);
-  const y = (e) => h - 6 - ((e - lo) / span) * (h - 14);
+  const x = (d) => 2 + (d / total) * (w - 4);
+  const y = (e) => h - 6 - ((e - lo) / span) * (h - 16);
   const path = () => { ctx.beginPath(); profile.forEach(([d, e], i) => (i ? ctx.lineTo(x(d), y(e)) : ctx.moveTo(x(d), y(e)))); };
   ctx.lineWidth = 2; ctx.lineJoin = "round"; ctx.lineCap = "round";
-  path(); ctx.strokeStyle = css("--faint"); ctx.stroke();
-  if (pos == null) {
-    path(); ctx.lineTo(x(total), h); ctx.lineTo(x(0), h); ctx.closePath();
-    ctx.fillStyle = "rgba(255,122,26,0.10)"; ctx.fill();
-    path(); ctx.strokeStyle = css("--power"); ctx.stroke();
-    return;
-  }
-  const p = pos % total;
+  const p = pos == null ? total : pos % total;
+  ctx.save(); ctx.beginPath(); ctx.rect(x(p), 0, w, h); ctx.clip();
+  path(); ctx.strokeStyle = "#c9cbe6"; ctx.stroke(); ctx.restore();
   ctx.save(); ctx.beginPath(); ctx.rect(0, 0, x(p), h); ctx.clip();
-  path(); ctx.strokeStyle = css("--power"); ctx.stroke(); ctx.restore();
+  const fill = ctx.createLinearGradient(0, 0, 0, h);
+  fill.addColorStop(0, tint(accent, 0.16)); fill.addColorStop(1, tint(accent, 0));
+  path(); ctx.lineTo(x(total), h); ctx.lineTo(x(0), h); ctx.closePath(); ctx.fillStyle = fill; ctx.fill();
+  path(); ctx.strokeStyle = accent; ctx.stroke(); ctx.restore();
+  if (pos == null) return;
   let e = profile[0][1];
   for (let i = 1; i < profile.length; i++) {
     const [d0, e0] = profile[i - 1], [d1, e1] = profile[i];
     if (p <= d1) { e = e0 + ((e1 - e0) * (p - d0)) / Math.max(d1 - d0, 1e-6); break; }
   }
-  ctx.fillStyle = css("--power"); ctx.beginPath(); ctx.arc(x(p), y(e), 4.5, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.arc(x(p), y(e), 6, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = accent; ctx.beginPath(); ctx.arc(x(p), y(e), 4, 0, Math.PI * 2); ctx.fill();
 }
 
-function workoutBars(el, w) {
-  el.innerHTML = "";
-  for (const s of w.steps) {
+// Interval bars: height follows intensity. In the picker they use zone colours; during a
+// ride, work blocks are solid accent and recoveries lighter, with upcoming ones paler still.
+function intervalBars(el, steps, progressT = null) {
+  el.querySelectorAll("i").forEach((n) => n.remove());
+  const accent = css("--accent");
+  for (const s of steps) {
     const i = document.createElement("i");
     const lo = s.low ?? 0.5, hi = s.high ?? 0.5, mid = (lo + hi) / 2;
     i.style.flex = String(s.duration);
-    i.style.height = `${Math.min(100, 18 + mid * 62)}%`;
-    i.style.background = s.low == null ? css("--faint") : zoneColor(zoneIndex(mid));
+    i.style.height = `${Math.min(100, 14 + mid * 66)}%`;
+    if (progressT == null) i.style.background = s.low == null ? css("--track") : zoneColor(zoneIndex(mid));
+    else {
+      const reached = progressT >= s.start, strong = mid >= 0.9;
+      i.style.background = reached ? (strong ? accent : tint(accent, 0.45)) : (strong ? tint(accent, 0.28) : tint(accent, 0.18));
+    }
     el.appendChild(i);
   }
 }
@@ -629,9 +668,11 @@ function remember() {
 const VIEWS = ["ride", "workouts", "routes", "history", "settings"];
 function showView() {
   const name = VIEWS.includes(location.hash.slice(1)) ? location.hash.slice(1) : "ride";
-  for (const v of VIEWS) $(`v-${v}`).hidden = v !== name;
-  window.scrollTo(0, 0);  // every page starts at its title
+  const summaryOpen = !$("summary").hidden;
+  for (const v of VIEWS) $(`v-${v}`).hidden = v !== name || summaryOpen;
   document.querySelectorAll(".nav").forEach((a) => a.classList.toggle("on", a.dataset.view === name));
+  $("top-meta").textContent = name === "ride" ? "Setup · 1 of 2" : settings ? `${settings.mass_kg} kg · FTP ${settings.ftp} W` : "";
+  window.scrollTo(0, 0);  // every page starts at its title
   if (name === "history") loadHistory();
   if (name === "routes") renderRoutes();
   if (name === "workouts") renderWorkouts();
@@ -639,40 +680,45 @@ function showView() {
 window.addEventListener("hashchange", () => { $("summary").hidden = true; showView(); });
 
 function renderRiderMeta() {
-  if (settings) $("rider-meta").textContent = `${settings.mass_kg} kg · FTP ${settings.ftp} W`;
+  if (settings) $("rider-meta").textContent = `${settings.mass_kg} kg · FTP ${settings.ftp} W · used by the physics model`;
+}
+
+function setPill(el, state, text) {
+  el.className = state === "ok" ? "pill ok" : state === "wait" ? "pill wait" : "pill";
+  el.innerHTML = `<span class="dot"></span>${esc(text)}`;
 }
 
 function renderDevices() {
   const trainers = devices.filter((d) => d.kind === "trainer");
   const sameRadio = (d) => choice.trainer !== "sim" && isAnt(d.id) === isAnt(choice.trainer);
   const straps = devices.filter((d) => d.kind === "heart_rate" && sameRadio(d));
-  $("trainer").innerHTML = trainers.map((d) => `<option value="${esc(d.id)}">${esc(d.name)} — ${esc(d.detail)}</option>`).join("");
+  const cads = devices.filter((d) => d.kind === "cadence" && sameRadio(d));
+  // Name plus the kind of device; the Bluetooth address or ANT+ number stays in the tooltip.
+  const option = (d) => `<option value="${esc(d.id)}" title="${esc(d.detail)}">${esc(d.id === "sim" ? d.name : `${d.name} · ${d.detail.split(" · ")[0]}`)}</option>`;
+  $("trainer").innerHTML = trainers.map(option).join("");
   $("trainer").value = trainers.some((d) => d.id === choice.trainer) ? choice.trainer : "sim";
   choice.trainer = $("trainer").value;
-  $("hr").innerHTML = `<option value="">None</option>` + straps.map((d) => `<option value="${esc(d.id)}">${esc(d.name)} — ${esc(d.detail)}</option>`).join("");
+  $("hr").innerHTML = `<option value="">${straps.length ? "None selected" : "No strap paired"}</option>` + straps.map(option).join("");
   $("hr").value = straps.some((d) => d.id === choice.hr) ? choice.hr : "";
   choice.hr = $("hr").value;
-  const cads = devices.filter((d) => d.kind === "cadence" && sameRadio(d));
-  $("cad-sel").innerHTML = `<option value="">From the trainer, if it reports cadence</option>` + cads.map((d) => `<option value="${esc(d.id)}">${esc(d.name)} — ${esc(d.detail)}</option>`).join("");
+  $("cad-sel").innerHTML = `<option value="">${cads.length ? "From the trainer" : "No sensor paired"}</option>` + cads.map(option).join("");
   $("cad-sel").value = cads.some((d) => d.id === choice.cadence) ? choice.cadence : "";
   choice.cadence = $("cad-sel").value;
   const sim = choice.trainer === "sim";
   const trainer = devices.find((d) => d.id === choice.trainer);
   const detail = trainer ? trainer.detail : "";
-  $("trainer-tag").textContent = sim ? "Simulated" : detail.startsWith("Wahoo") ? "Wahoo · controllable"
-    : detail.includes("power meter") ? "ANT+ · power only" : isAnt(choice.trainer) ? "ANT+ FE-C · controllable" : "FTMS · controllable";
-  $("power-src").textContent = sim ? "Power and cadence come from the simulated rider."
-    : detail.startsWith("Wahoo") ? "Power comes from the trainer. Wahoo KICKR SNAP trainers do not report cadence; pair a cadence sensor for it."
-    : `Power comes from the trainer. Sensors must use the same radio (${isAnt(choice.trainer) ? "ANT+" : "Bluetooth"}).`;
   $("hr").disabled = sim; $("cad-sel").disabled = sim;
-  $("cad-state").className = choice.cadence ? "pill ok" : "pill";
-  $("cad-state").innerHTML = `<span class="dot"></span>${choice.cadence ? "Selected" : sim ? "Simulated" : "Optional"}`;
-  $("hr-state").className = choice.hr ? "pill ok" : "pill";
-  $("hr-state").innerHTML = `<span class="dot"></span>${choice.hr ? "Selected" : sim ? "Simulated" : "Optional"}`;
+  $("power-src").textContent = sim ? "Simulated rider"
+    : detail.includes("power meter") ? "From the ANT+ power meter" : "From the trainer";
+  setPill($("power-state"), "ok", sim ? "Simulated" : "From trainer");
+  setPill($("hr-state"), choice.hr ? "ok" : "", choice.hr ? "Selected" : sim ? "Simulated" : "Optional");
+  setPill($("cad-state"), choice.cadence ? "ok" : "", choice.cadence ? "Selected" : sim ? "Simulated" : "Optional");
+  $("d-hr").classList.toggle("empty", !sim && !choice.hr);
+  $("d-cad").classList.toggle("empty", !sim && !choice.cadence);
 }
 
 function renderSession() {
-  $("route-sel").innerHTML = `<option value="">No route (flat)</option>` +
+  $("route-sel").innerHTML = `<option value="">No route (flat road)</option>` +
     library.routes.map((r) => `<option value="${esc(r.id)}">${esc(r.name)} · ${km(r.length)} km · ${r.ascent} m</option>`).join("");
   $("route-sel").value = library.routes.some((r) => r.id === choice.route) ? choice.route : "";
   $("workout-sel").innerHTML = `<option value="">None</option>` +
@@ -686,7 +732,7 @@ function renderSession() {
   const w = library.workouts.find((x) => x.id === choice.workout);
   const r = library.routes.find((x) => x.id === choice.route);
   $("session-note").textContent = w
-    ? `${w.name} in ERG mode${r ? ` on ${r.name}` : ""} · ${hm(w.duration)} · ${w.tss} TSS`
+    ? `${w.name} in ERG${r ? ` on ${r.name}` : ""} · ${hm(w.duration)} · ${w.tss} TSS`
     : `${choice.mode.toUpperCase()} mode${r ? ` on ${r.name}` : " on a flat road"}`;
 }
 
@@ -696,18 +742,18 @@ function renderWorkouts() {
     const b = document.createElement("button");
     b.type = "button"; b.className = `card pick${w.id === choice.workout ? " on" : ""}`;
     b.innerHTML = `<div class="bars"></div>
-      <div class="row" style="gap:8px"><b class="grow">${esc(w.name)}</b>${w.id === choice.workout ? '<span class="pill tag">Selected</span>' : ""}</div>
-      <div class="small faint">${esc(w.description)}</div>
-      <div class="stats3"><div><div class="num">${hm(w.duration)}</div><div class="label" style="font-size:9px">Time</div></div>
-        <div><div class="num">${w.tss}</div><div class="label" style="font-size:9px">TSS</div></div>
-        <div><div class="num">${w.intensity_factor.toFixed(2)}</div><div class="label" style="font-size:9px">IF</div></div></div>`;
-    workoutBars(b.querySelector(".bars"), w);
+      <div class="pick-title"><span class="grow">${esc(w.name)}</span>${w.id === choice.workout ? '<span class="pill accent">Selected</span>' : ""}</div>
+      <div class="small faint" style="margin-top:2px">${esc(w.description)}</div>
+      <div class="stats3"><div><div class="num">${hm(w.duration)}</div><div class="label">Time</div></div>
+        <div><div class="num">${w.tss}</div><div class="label">TSS</div></div>
+        <div><div class="num">${w.intensity_factor.toFixed(2)}</div><div class="label">IF</div></div></div>`;
+    intervalBars(b.querySelector(".bars"), w.steps);
     b.addEventListener("click", () => { choice.workout = w.id; remember(); renderWorkouts(); renderSession(); });
     grid.appendChild(b);
   }
   const w = library.workouts.find((x) => x.id === choice.workout);
   $("wbar-name").textContent = w ? w.name : "No workout";
-  $("wbar-meta").textContent = w ? `${hm(w.duration)} · ${w.tss} TSS · ERG mode on trainer` : "Ride a route in SIM mode instead";
+  $("wbar-meta").textContent = w ? `${hm(w.duration)} · ${w.tss} TSS · ERG mode on the trainer` : "Ride a route in SIM mode instead";
 }
 
 function renderRoutes() {
@@ -716,9 +762,9 @@ function renderRoutes() {
     const b = document.createElement("button");
     b.type = "button"; b.className = `card pick${r.id === choice.route ? " on" : ""}`;
     b.innerHTML = `<canvas class="profile"></canvas>
-      <div class="row" style="gap:8px"><b class="grow">${esc(r.name)}</b>${r.id === choice.route ? '<span class="pill tag">Selected</span>' : ""}</div>
-      <div class="stats3"><div><div class="num">${km(r.length)}</div><div class="label" style="font-size:9px">km</div></div>
-        <div><div class="num">${r.ascent}</div><div class="label" style="font-size:9px">m up</div></div></div>`;
+      <div class="pick-title"><span class="grow">${esc(r.name)}</span>${r.id === choice.route ? '<span class="pill accent">Selected</span>' : ""}</div>
+      <div class="stats3"><div><div class="num">${km(r.length)}</div><div class="label">km</div></div>
+        <div><div class="num">${r.ascent}</div><div class="label">m up</div></div></div>`;
     b.addEventListener("click", () => { choice.route = r.id; remember(); renderRoutes(); renderSession(); });
     grid.appendChild(b);
     requestAnimationFrame(() => drawProfile(b.querySelector("canvas"), r.profile));
@@ -729,7 +775,7 @@ async function loadHistory() {
   const body = $("history-rows");
   try {
     const rides = await api("/api/rides");
-    if (!rides.length) { body.innerHTML = `<tr><td colspan="7" class="empty">No rides yet — your first one will show up here.</td></tr>`; return; }
+    if (!rides.length) { body.innerHTML = `<tr><td colspan="7" class="empty-row">No rides yet. Your first one will show up here.</td></tr>`; return; }
     body.innerHTML = "";
     for (const r of rides) {
       const s = r.summary, tr = document.createElement("tr");
@@ -743,7 +789,7 @@ async function loadHistory() {
       tr.addEventListener("keydown", (e) => { if (e.key === "Enter") open(); });
       body.appendChild(tr);
     }
-  } catch (e) { body.innerHTML = `<tr><td colspan="7" class="empty">${esc(e.message)}</td></tr>`; }
+  } catch (e) { body.innerHTML = `<tr><td colspan="7" class="empty-row">${esc(e.message)}</td></tr>`; }
 }
 
 function fillSettings() {
@@ -756,9 +802,8 @@ function fillSettings() {
   f.intervals_athlete_id.value = settings.intervals_athlete_id;
   f.intervals_api_key.placeholder = settings.intervals_api_key_set ? "Saved — leave blank to keep" : "";
   f.strava_client_secret.value = ""; f.intervals_api_key.value = "";
-  const st = $("strava-state");
-  st.className = settings.strava_connected ? "pill ok" : "pill";
-  st.innerHTML = `<span class="dot"></span>${settings.strava_connected ? `Connected${settings.strava_athlete ? ` as ${esc(settings.strava_athlete)}` : ""}` : "Not connected"}`;
+  setPill($("strava-state"), settings.strava_connected ? "ok" : "",
+    settings.strava_connected ? `Connected${settings.strava_athlete ? ` as ${settings.strava_athlete}` : ""}` : "Not connected");
   $("strava-disconnect").hidden = !settings.strava_connected;
   $("strava-connect").textContent = settings.strava_connected ? "Reconnect" : "Connect Strava";
   renderRiderMeta();
@@ -776,74 +821,75 @@ async function saveSettings() {
 }
 
 // ---------- ride HUD ----------
-let cfg = null, samples = [], last = null, lastAt = 0, dirty = false, finished = null;
+let cfg = null, last = null, dirty = false, lastStep = -1;
+const RING = 2 * Math.PI * 86, OVER = 2 * Math.PI * 70;
 
 function showRide(on) {
-  $("ride").hidden = !on; $("shell").hidden = on;
-  if (on && !worldRunning) { worldRunning = true; requestAnimationFrame(drawWorld); }
+  $("ride").hidden = !on; $("app").hidden = on;
+  if (!on) showView();
 }
 
 function applyConfig() {
   const w = cfg.workout, r = cfg.route;
-  $("ride-sub").textContent = `${cfg.trainer} · ${cfg.mode.toUpperCase()}${r ? ` · ${r.name}` : ""}`;
-  $("course-name").textContent = r ? `${r.name} · ${km(r.length)} km loop` : "Flat road";
+  $("course-name").textContent = r ? r.name : "Flat road";
   $("end").disabled = false;
+  $("strip-bars").hidden = !w; $("strip-track").hidden = !!w;
+  if (w) intervalBars($("strip-bars"), w.steps, 0);
+  renderTitle();
 }
 
-function renderCard() {
+function renderTitle() {
+  const r = cfg.route;
+  const lap = r && last ? Math.floor(last.distance / r.length) + 1 : 1;
+  $("ride-title").textContent = r ? `${r.name} · Lap ${lap}` : `${cfg.mode.toUpperCase()} ride · Flat road`;
+}
+
+function renderStrip() {
   const w = cfg.workout, t = last ? last.t : 0;
   if (w) {
-    const step = w.steps[Math.min(last ? last.step : 0, w.steps.length - 1)];
-    $("card-label").textContent = "Workout · ERG";
-    $("card-title").textContent = w.name;
-    $("card-note").textContent = `${step.label} · ${Math.min(last ? last.step + 1 : 1, w.steps.length)}/${w.steps.length}`;
-    $("card-value").textContent = last && last.target != null ? last.target : "Free";
-    $("card-unit").textContent = last && last.target != null ? "W target" : "ride";
-    $("card-time").textContent = short(step.start + step.duration - t);
-    $("card-bar").style.width = `${Math.min(100, ((t - step.start) / step.duration) * 100)}%`;
-  } else if (cfg.mode === "erg") {
-    $("card-label").textContent = "ERG · fixed target";
-    $("card-title").textContent = "Target hold";
-    $("card-value").textContent = cfg.target_power; $("card-unit").textContent = "W target";
-    setRemaining(t);
-  } else {
-    const r = cfg.route;
-    $("card-label").textContent = cfg.mode === "sim" ? "Course · SIM" : "Free ride";
-    $("card-title").textContent = r ? r.name : cfg.mode === "sim" ? "Flat road" : "No resistance control";
-    if (r && last) {
-      const lap = Math.floor(last.distance / r.length) + 1;
-      $("card-value").textContent = `Lap ${lap}`;
-      $("card-unit").textContent = `${km(r.length - (last.distance % r.length))} km to go`;
-    } else { $("card-value").textContent = "–"; $("card-unit").textContent = ""; }
-    setRemaining(t);
+    const index = Math.min(last ? last.step : 0, w.steps.length - 1), step = w.steps[index];
+    $("strip-label").textContent = "Workout · ERG";
+    $("strip-name").textContent = w.name;
+    $("strip-value").textContent = last && last.target != null ? `${last.target} W` : "Free";
+    const work = w.steps.filter((s) => (s.low ?? 0) >= 0.9);
+    const n = work.indexOf(step) + 1;
+    $("strip-note").textContent = `${short(step.start + step.duration - t)} left · ${n ? `${n}/${work.length}` : step.label}`;
+    if (index !== lastStep) { intervalBars($("strip-bars"), w.steps, t); lastStep = index; }
+    let cursor = $("strip-bars").querySelector(".strip-cursor");
+    if (!cursor) { cursor = document.createElement("span"); cursor.className = "strip-cursor"; $("strip-bars").appendChild(cursor); }
+    cursor.style.left = `${Math.min(100, (t / w.duration) * 100)}%`;
+    return;
   }
-}
-function setRemaining(t) {
-  if (cfg.duration_s) {
-    $("card-note").textContent = "remaining";
-    $("card-time").textContent = short(cfg.duration_s - t);
-    $("card-bar").style.width = `${Math.min(100, (t / cfg.duration_s) * 100)}%`;
-  } else {
-    $("card-note").textContent = "until you stop";
-    $("card-time").textContent = "";
-    const r = cfg.route;
-    $("card-bar").style.width = r && last ? `${((last.distance % r.length) / r.length) * 100}%` : "0%";
-  }
+  const r = cfg.route;
+  $("strip-label").textContent = cfg.mode === "erg" ? "ERG · fixed target" : cfg.mode === "sim" ? "Course · SIM" : "Free ride";
+  $("strip-name").textContent = cfg.mode === "erg" ? "Target hold" : r ? r.name : "Flat road";
+  if (cfg.mode === "erg") $("strip-value").textContent = `${cfg.target_power} W`;
+  else $("strip-value").textContent = r && last ? `Lap ${Math.floor(last.distance / r.length) + 1}` : "–";
+  let note = "until you stop", progress = 0;
+  if (cfg.duration_s) { note = `${short(cfg.duration_s - t)} left`; progress = t / cfg.duration_s; }
+  else if (r && last) { note = `${km(r.length - (last.distance % r.length))} km to lap`; progress = (last.distance % r.length) / r.length; }
+  $("strip-note").textContent = note;
+  $("strip-progress").style.width = `${Math.min(100, progress * 100)}%`;
 }
 
 function render() {
   dirty = false;
   if (!cfg) return;
-  renderCard();
+  renderStrip(); renderTitle();
   if (!last) return;
-  const p = last.power ?? 0, zi = zoneIndex(p / cfg.ftp);
+  const p = last.power ?? 0, ratio = p / cfg.ftp, zi = zoneIndex(ratio);
   $("elapsed").textContent = clock(last.t);
   $("power-v").textContent = p;
-  $("zone").textContent = `${ZONES[zi][1]} · ${ZONES[zi][2].toUpperCase()}`;
-  $("zone").style.borderColor = zoneColor(zi);
-  $("wkg").textContent = `${(p / cfg.mass_kg).toFixed(1)} W/kg · ${Math.round((p / cfg.ftp) * 100)}% FTP`;
-  $("live-np").textContent = `NP ${last.np} W · TSS ${Math.round(last.tss)}`;
-  [...$("zones").children].forEach((el, i) => (el.style.background = i <= zi ? zoneColor(i) : css("--elevated")));
+  $("zone").textContent = `${ZONES[zi][1]} · ${ZONES[zi][2]}`;
+  // Round caps would draw a dot for a zero-length arc, so hide empty arcs.
+  const main = Math.min(1, ratio), over = Math.min(1, Math.max(0, ratio - 1));
+  $("ring-arc").setAttribute("stroke-dasharray", `${main * RING} ${RING}`);
+  $("ring-arc").style.visibility = main > 0 ? "visible" : "hidden";
+  $("ring-over").setAttribute("stroke-dasharray", `${over * OVER} ${OVER}`);
+  $("ring-over").style.visibility = over > 0 ? "visible" : "hidden";
+  $("pct-ftp").textContent = `${Math.round(ratio * 100)}% FTP`;
+  $("wkg").textContent = `${(p / cfg.mass_kg).toFixed(1)} W/kg`;
+  $("foot-extra").textContent = last.target != null ? `target ${last.target} W` : `NP ${last.np} W`;
   $("cad").textContent = last.cadence ?? "–";
   $("hrv").textContent = last.heart_rate ?? "–";
   $("spd").textContent = ((last.speed ?? 0) * 3.6).toFixed(1);
@@ -853,53 +899,6 @@ function render() {
   drawProfile($("elev"), cfg.route ? cfg.route.profile : null, cfg.route ? last.distance : null, cfg.route ? cfg.route.length : null);
 }
 const schedule = () => { if (!dirty) { dirty = true; requestAnimationFrame(render); } };
-
-// Simulated world: horizon glow, hills and a road whose dashes move with distance.
-let worldRunning = false;
-function drawWorld(now) {
-  if ($("ride").hidden) { worldRunning = false; return; }
-  worldRunning = true;
-  const [ctx, w, h] = fit($("world"));
-  const grade = last ? last.grade : 0;
-  const horizon = h * (0.52 + Math.max(-0.06, Math.min(0.06, grade / 120)));
-  const sky = ctx.createLinearGradient(0, 0, 0, horizon);
-  sky.addColorStop(0, "#0b0f14"); sky.addColorStop(1, "#1a2433");
-  ctx.fillStyle = sky; ctx.fillRect(0, 0, w, horizon);
-  const glow = ctx.createRadialGradient(w / 2, horizon, 0, w / 2, horizon, w * 0.45);
-  glow.addColorStop(0, "rgba(255,122,26,0.28)"); glow.addColorStop(1, "rgba(255,122,26,0)");
-  ctx.fillStyle = glow; ctx.fillRect(0, 0, w, horizon);
-  let dist = 0;
-  if (last) dist = last.distance + (last.speed ?? 0) * Math.min((now - lastAt) / 1000, 0.5);
-  ctx.fillStyle = "#111a26";
-  ctx.beginPath(); ctx.moveTo(0, horizon);
-  for (let px = 0; px <= w; px += 8) {
-    const q = px + dist * 0.4;
-    ctx.lineTo(px, horizon - 18 - 14 * Math.sin(q / 140) - 8 * Math.sin(q / 47 + 1));
-  }
-  ctx.lineTo(w, horizon); ctx.fill();
-  const ground = ctx.createLinearGradient(0, horizon, 0, h);
-  ground.addColorStop(0, "#0f1712"); ground.addColorStop(1, "#0a0e0c");
-  ctx.fillStyle = ground; ctx.fillRect(0, horizon, w, h - horizon);
-  const cx = w / 2, near = h - horizon;
-  ctx.fillStyle = "#1b222c";
-  ctx.beginPath(); ctx.moveTo(cx - 6, horizon); ctx.lineTo(cx + 6, horizon);
-  ctx.lineTo(cx + w * 0.32, h); ctx.lineTo(cx - w * 0.32, h); ctx.fill();
-  const spacing = 12, dash = 4, cam = 4;
-  ctx.fillStyle = "rgba(242,245,248,0.55)";
-  for (let k = 0; k < 40; k++) {
-    const z0 = k * spacing - (dist % spacing) + cam, z1 = z0 + dash;
-    if (z0 <= cam * 0.5) continue;
-    const y0 = horizon + (near * cam) / z0, y1 = horizon + (near * cam) / z1;
-    const half = (3 * cam) / z0;
-    ctx.fillRect(cx - half, y1, half * 2, Math.max(1, y0 - y1));
-  }
-  const ry = horizon + near * 0.3;
-  ctx.fillStyle = css("--power");
-  ctx.beginPath(); ctx.arc(cx, ry, 11, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = "#0b0f14";
-  ctx.beginPath(); ctx.arc(cx, ry, 4.5, 0, Math.PI * 2); ctx.fill();
-  requestAnimationFrame(drawWorld);
-}
 
 // ---------- summary ----------
 let shownRide = null;
@@ -920,16 +919,18 @@ function showSummary(ride) {
   $("s-mhr").textContent = s.max_hr ?? "–"; $("b-mhr").style.width = s.max_hr ? pct(s.max_hr, 200) : "0";
   $("s-mw").textContent = s.max_power; $("b-mw").style.width = pct(s.max_power, Math.max(s.ftp * 2.5, s.max_power));
   $("s-elev").textContent = Math.round(s.ascent); $("s-work").textContent = s.work_kj;
+  $("s-kcal").textContent = s.calories ?? s.work_kj;
   $("s-cad").textContent = s.avg_cadence ?? "–";
-  $("s-avgv").textContent = s.elapsed ? ((s.distance / s.elapsed) * 3.6).toFixed(1) : "0.0";
   $("laps").innerHTML = s.laps.map((l, i) => `<tr><td class="faint">${i + 1}</td><td>${short(l.elapsed)}</td>
-    <td style="color:var(--power)">${l.avg_power}</td><td>${l.max_power}</td><td>${l.avg_hr ?? "–"}</td><td>${km(l.distance)} km</td></tr>`).join("");
+    <td style="color:var(--accent)">${l.avg_power}</td><td>${l.normalized_power ?? "–"}</td><td>${l.avg_hr ?? "–"}</td><td class="hide-sm nowrap">${km(l.distance)} km</td></tr>`).join("");
   $("save-fit").href = `/api/rides/${ride.id}/fit`;
   const note = $("sum-note");
   note.hidden = !ride.error;
   note.textContent = ride.error ? `The ride ended early (${ride.error}); everything up to that point was saved.` : "";
   updateUploadButtons();
   $("summary").hidden = false;
+  for (const v of VIEWS) $(`v-${v}`).hidden = true;
+  window.scrollTo(0, 0);
   requestAnimationFrame(() => drawChart(ride));
 }
 
@@ -938,7 +939,7 @@ function updateUploadButtons() {
   for (const [service, label] of [["strava", "Strava"], ["intervals", "intervals.icu"]]) {
     const b = $(`up-${service}`), u = ups[service];
     b.disabled = false;
-    b.textContent = u ? `View on ${label}` : `Upload to ${label}`;
+    b.querySelector("span").textContent = u ? `View on ${label}` : `Upload to ${label}`;
     b.dataset.url = u && u.url ? u.url : "";
   }
 }
@@ -946,7 +947,7 @@ function updateUploadButtons() {
 async function upload(service) {
   const b = $(`up-${service}`);
   if (b.dataset.url) { window.open(b.dataset.url, "_blank", "noopener"); return; }
-  b.disabled = true; b.textContent = "Uploading…";
+  b.disabled = true;
   try {
     const result = await api(`/api/rides/${shownRide.id}/upload/${service}`, { method: "POST" });
     shownRide.uploads = { ...(shownRide.uploads || {}), [service]: result };
@@ -966,25 +967,24 @@ function drawChart(ride) {
   let lower = 0;
   ZONES.forEach(([max], i) => {
     const upper = Math.min(max * s.ftp, pMax);
-    if (upper > lower) { ctx.globalAlpha = 0.07; ctx.fillStyle = zoneColor(i); ctx.fillRect(0, y(upper), w, y(lower) - y(upper)); }
+    if (upper > lower) { ctx.fillStyle = tint(zoneColor(i), 0.06); ctx.fillRect(0, y(upper), w, y(lower) - y(upper)); }
     lower = upper;
   });
-  ctx.globalAlpha = 1;
-  ctx.strokeStyle = css("--muted"); ctx.setLineDash([5, 5]); ctx.lineWidth = 1;
+  ctx.strokeStyle = css("--faint"); ctx.setLineDash([5, 5]); ctx.lineWidth = 1.5;
   ctx.beginPath(); ctx.moveTo(0, y(s.normalized_power)); ctx.lineTo(w, y(s.normalized_power)); ctx.stroke();
-  ctx.setLineDash([]); ctx.strokeStyle = css("--power"); ctx.lineWidth = 2; ctx.lineJoin = "round";
+  ctx.setLineDash([]); ctx.strokeStyle = css("--accent"); ctx.lineWidth = 2; ctx.lineJoin = "round";
   ctx.beginPath();
   trace.forEach((p, i) => (i ? ctx.lineTo(x(p[0]), y(p[1] ?? 0)) : ctx.moveTo(x(p[0]), y(p[1] ?? 0))));
   ctx.stroke();
 }
 
 // ---------- live events ----------
-function setStatus(live, text) { $("status").className = live ? "live" : "off"; $("status-text").textContent = text; }
+function setStatus(live, text) { $("status").className = live ? "rec-state" : "rec-state off"; $("status-text").textContent = text; }
 
 function connectEvents() {
   const events = new EventSource("/events");
-  events.addEventListener("open", () => setStatus(true, "Live"));
-  events.addEventListener("error", () => setStatus(false, "Reconnecting…"));
+  events.addEventListener("open", () => setStatus(true, "Recording"));
+  events.addEventListener("error", () => setStatus(false, "Reconnecting"));
   events.addEventListener("idle", (e) => {
     const data = JSON.parse(e.data);
     cfg = null; showRide(false);
@@ -992,18 +992,15 @@ function connectEvents() {
   });
   // The server replays the current ride on every (re)connect, starting with config.
   events.addEventListener("config", (e) => {
-    cfg = JSON.parse(e.data); samples = []; last = null; finished = null;
-    setStatus(true, "Live");
+    cfg = JSON.parse(e.data); last = null; lastStep = -1;
+    setStatus(true, "Recording");
     $("summary").hidden = true; applyConfig(); showRide(true); schedule();
   });
-  events.addEventListener("sample", (e) => {
-    last = JSON.parse(e.data); lastAt = performance.now(); samples.push(last); schedule();
-  });
+  events.addEventListener("sample", (e) => { last = JSON.parse(e.data); schedule(); });
   events.addEventListener("done", (e) => {
-    finished = JSON.parse(e.data);
-    setStatus(true, "Ride finished");
-    if (store.get("rullo.dismissed") === finished.id) { showRide(false); return; }
-    showRide(false); showSummary(finished);
+    const finished = JSON.parse(e.data);
+    showRide(false);
+    if (store.get("rullo.dismissed") !== finished.id) showSummary(finished);
   });
 }
 
@@ -1028,17 +1025,18 @@ document.querySelectorAll(".seg [data-radio]").forEach((b) => b.addEventListener
 
 $("scan").addEventListener("click", async () => {
   const b = $("scan"); b.disabled = true; b.textContent = "Scanning…";
-  $("trainer-state").className = "pill wait"; $("trainer-state").innerHTML = '<span class="dot"></span>Searching';
+  setPill($("trainer-state"), "wait", "Searching");
+  for (const id of ["d-hr", "d-cad"]) if ($(id).classList.contains("empty")) setPill($(id).querySelector(".pill"), "wait", "Searching");
   try {
     const result = await api(`/api/devices?scan=1&radio=${radio}`);
     scanned[radio] = result.devices.filter((d) => d.id !== "sim");
     devices = [SIM_DEVICE, ...scanned.bluetooth, ...scanned.ant];
     const found = scanned[radio].length;
     $("scan-note").textContent = result.error || (found ? `Found ${found} ${radioLabel()} device${found > 1 ? "s" : ""}.` : "Nothing found. Wake the trainer by pedalling, close other apps connected to it, and try again.");
-    renderDevices();
   } catch (e) { $("scan-note").textContent = e.message; }
+  renderDevices();
   b.disabled = false; b.textContent = `Scan ${radioLabel()} again`;
-  $("trainer-state").className = "pill ok"; $("trainer-state").innerHTML = '<span class="dot"></span>Ready';
+  setPill($("trainer-state"), "ok", "Ready");
 });
 
 $("start").addEventListener("click", async () => {
@@ -1047,8 +1045,8 @@ $("start").addEventListener("click", async () => {
   try {
     await api("/api/ride/start", { method: "POST", json: {
       trainer: choice.trainer, heart_rate: choice.hr || null, cadence: choice.cadence || null,
-      route: choice.route || null,
-      workout: choice.workout || null, mode: choice.workout ? "erg" : choice.mode,
+      route: choice.route || null, workout: choice.workout || null,
+      mode: choice.workout ? "erg" : choice.mode,
       target_power: choice.mode === "erg" && !choice.workout ? Number($("target").value) : null,
       duration_s: !choice.workout && minutes > 0 ? minutes * 60 : null,
     } });
@@ -1064,8 +1062,7 @@ $("end").addEventListener("click", async () => {
 
 $("sum-close").addEventListener("click", () => {
   if (shownRide) store.set("rullo.dismissed", shownRide.id);
-  $("summary").hidden = true; showRide(false);
-  if (location.hash === "#history") loadHistory();
+  $("summary").hidden = true; showView();
 });
 $("up-strava").addEventListener("click", () => upload("strava"));
 $("up-intervals").addEventListener("click", () => upload("intervals"));
@@ -1094,7 +1091,11 @@ $("strava-connect").addEventListener("click", async () => {
 $("strava-disconnect").addEventListener("click", async () => {
   try { settings = await api("/api/strava/disconnect", { method: "POST" }); fillSettings(); } catch (err) { toast(err.message, true); }
 });
-window.addEventListener("resize", () => { schedule(); if (location.hash === "#routes") renderRoutes(); });
+window.addEventListener("resize", () => {
+  schedule();
+  if (location.hash === "#routes") renderRoutes();
+  if (shownRide && !$("summary").hidden) drawChart(shownRide);
+});
 
 (async function init() {
   const params = new URLSearchParams(location.search);

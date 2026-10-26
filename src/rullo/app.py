@@ -52,6 +52,11 @@ from rullo.webserver import (
 
 logger = logging.getLogger(__name__)
 
+# Bundled fonts (SIL Open Font License; the license files sit next to them).
+_FONTS = {
+    "/fonts/inter.woff2": "inter.woff2",
+    "/fonts/space-grotesk.woff2": "space-grotesk.woff2",
+}
 _RIDE_URL = re.compile(r"^/api/rides/([0-9TZ]+)(/fit|/upload/(strava|intervals))?$")
 
 
@@ -406,6 +411,9 @@ class App:
         if path in ("/logo.svg", "/favicon.svg", "/favicon.ico") and method == "GET":
             logo = (files("rullo") / "web" / "logo.svg").read_bytes()
             return Response(200, logo, "image/svg+xml")
+        if path in _FONTS and method == "GET":
+            font = (files("rullo") / "web" / "fonts" / _FONTS[path]).read_bytes()
+            return Response(200, font, "font/woff2", {"Cache-Control": "max-age=86400"})
         if path == "/events" and method == "GET":
             return Stream(self.hub.stream())
         if path == "/api/library" and method == "GET":
