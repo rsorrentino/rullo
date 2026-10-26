@@ -1,8 +1,8 @@
 # Rullo
 
 Rullo is a solo, offline indoor-cycling training app for Linux and an open
-alternative to Zwift. It controls a Bluetooth FTMS smart trainer (or a simulated
-one), turns your power into speed with a deterministic physics model over a real
+alternative to Zwift. It controls a Bluetooth smart trainer, either a standard FTMS trainer or a
+Wahoo KICKR on older firmware (or a simulated one), turns your power into speed with a deterministic physics model over a real
 elevation profile, and records every ride to a `.fit` file you can upload to
 Strava or intervals.icu.
 
@@ -16,7 +16,7 @@ uv run rullo            # opens the app at http://127.0.0.1:8765/
 In the app:
 
 1. **Ride**: pick the simulated trainer, or press *Scan for Bluetooth devices*
-   to find an FTMS trainer and an optional heart-rate strap.
+   to find a trainer and an optional heart-rate strap and cadence sensor.
 2. **Routes / Workouts**: choose a route (three demo routes are bundled; import
    your own GPX) and optionally a structured workout (`.zwo`, ERG mode).
 3. **Start ride**: the HUD shows power with zones, the workout or course card,
@@ -61,11 +61,24 @@ uv run mypy
 
 The whole suite runs on the simulated trainer: no hardware, no network.
 
+## Trainers
+
+Rullo picks the protocol when it connects: FTMS if the trainer offers it,
+otherwise Wahoo's own control commands (for example a KICKR SNAP on firmware
+2.x). The Wahoo commands follow open-source implementations, since Wahoo does
+not publish them. The KICKR SNAP does not report cadence, so pair a Bluetooth
+cadence sensor if you want it.
+
+If the scan does not find your trainer, make sure it is not connected in your
+system Bluetooth settings or in another app (Wahoo, Zwift). A connected trainer
+stops advertising.
+
 ## Status
 
-Bluetooth FTMS trainers and heart-rate straps are supported, but they have only
-been tested against fakes so far, not real hardware. ANT+, a 3D world and
-Flatpak packaging are not built yet.
+Tested with a real KICKR SNAP (firmware 2.3.63) for scanning, connecting and
+reading power. Resistance commands are covered by tests, but have not yet been
+checked by riding a real trainer. ANT+, a 3D world and Flatpak packaging are
+not built yet.
 
 ## License
 

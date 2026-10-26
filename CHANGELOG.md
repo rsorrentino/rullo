@@ -21,6 +21,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   HUD, review NP/IF/TSS and laps, browse history, and change settings.
 - Bluetooth FTMS trainers (read power and cadence, set grade or target power)
   and heart-rate straps via `bleak`, with automatic reconnection.
+- Wahoo KICKR trainers without FTMS (for example a KICKR SNAP on firmware 2.x):
+  power from Cycling Power, with grade and ERG through Wahoo's control
+  characteristic. Protocol detected on connect.
+- Bluetooth cadence sensors (CSC), and the last resistance command re-applied
+  after a reconnect.
 - Course model with GPX import; three synthetic demo routes.
 - `.zwo` workouts in ERG mode; six bundled workouts.
 - Resistance controller: difficulty scaling, rate limiting, ERG ramp clamp and
