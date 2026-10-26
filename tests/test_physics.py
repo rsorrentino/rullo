@@ -29,7 +29,7 @@ def _converge(power: float, grade: float, ticks: int = 6000, dt: float = 0.1) ->
 
 def test_flat_steady_power_converges() -> None:
     v = _converge(250.0, 0.0)
-    assert 9.0 < v < 12.0  # ~32-43 km/h, plausible for 250 W / 78 kg
+    assert 9.7 < v < 11.1  # ~35-40 km/h, plausible for 250 W / 78 kg
     params = RiderParams()
     assert abs(speed_from_power(250.0, 0.0, v, params, 0.1) - v) < 1e-2
 

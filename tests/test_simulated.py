@@ -16,11 +16,21 @@
 
 """SimulatedDevice and loop tests."""
 
+import asyncio
+
+import pytest
+
+from rullo.__main__ import main
 from rullo.bus import TelemetryBus
 from rullo.devices.base import Mode
 from rullo.devices.simulated import SimulatedDevice
 from rullo.loop import run_loop
 from rullo.telemetry import Telemetry
+
+
+async def _fast_sleep(_: float) -> None:
+    # Yield to the event loop without waiting in real time.
+    await asyncio.sleep(0)
 
 
 async def _collect(device: SimulatedDevice, n: int) -> list[Telemetry]:
@@ -35,18 +45,18 @@ async def _collect(device: SimulatedDevice, n: int) -> list[Telemetry]:
 
 
 async def test_simulated_yields_power() -> None:
-    samples = await _collect(SimulatedDevice(rate_hz=100.0), 5)
+    samples = await _collect(SimulatedDevice(sleep=_fast_sleep), 5)
     assert all(s.power is not None for s in samples)
 
 
 async def test_simulated_is_deterministic_given_seed() -> None:
-    samples_a = await _collect(SimulatedDevice(rate_hz=100.0, seed=42), 10)
-    samples_b = await _collect(SimulatedDevice(rate_hz=100.0, seed=42), 10)
+    samples_a = await _collect(SimulatedDevice(sleep=_fast_sleep, seed=42), 10)
+    samples_b = await _collect(SimulatedDevice(sleep=_fast_sleep, seed=42), 10)
     assert [s.power for s in samples_a] == [s.power for s in samples_b]
 
 
 async def test_erg_mode_converges_to_target() -> None:
-    device = SimulatedDevice(mode=Mode.ERG, rider_power=100, rate_hz=100.0)
+    device = SimulatedDevice(mode=Mode.ERG, rider_power=100, sleep=_fast_sleep)
     await device.set_target_power(300)
     samples = await _collect(device, 30)
     assert samples[-1].power is not None
@@ -66,8 +76,34 @@ async def test_bus_fans_out_to_multiple_subscribers() -> None:
 async def test_loop_integrates_distance() -> None:
     bus = TelemetryBus()
     received = bus.subscribe()
-    state = await run_loop(SimulatedDevice(rate_hz=100.0), bus, max_ticks=20)
+    state = await run_loop(SimulatedDevice(sleep=_fast_sleep), bus, max_ticks=20)
     assert state.distance > 0.0
     first = await anext(received)
     assert first.power is not None
     assert first.speed is not None
+
+
+async def test_loop_writes_grade_and_target_to_device() -> None:
+    device = SimulatedDevice(mode=Mode.ERG, sleep=_fast_sleep)
+    await run_loop(device, TelemetryBus(), grade=4.2, target_power=250, max_ticks=1)
+    assert device.grade == 4.2
+    assert device.target_power == 250
+
+
+async def test_loop_stops_at_duration() -> None:
+    device = SimulatedDevice(rate_hz=4.0, sleep=_fast_sleep)
+    state = await run_loop(device, TelemetryBus(), duration_s=10.0)
+    assert state.elapsed == 10.0
+    assert state.distance > 0.0
+
+
+def test_cli_rides_a_short_session(capsys: pytest.CaptureFixture[str]) -> None:
+    assert main(["--duration", "0.2", "--rate", "20"]) == 0
+    out = capsys.readouterr().out
+    assert "P:" in out
+    assert out.strip().splitlines()[-1].startswith("Done:")
+
+
+def test_cli_erg_requires_target() -> None:
+    with pytest.raises(SystemExit):
+        main(["--mode", "erg"])
