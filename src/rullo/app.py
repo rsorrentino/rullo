@@ -22,11 +22,19 @@ import re
 import secrets
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from importlib.resources import files
 from pathlib import Path
 from typing import Any
 
+from rullo.analytics import (
+    best_powers,
+    ftp_estimate,
+    power_curve,
+    ramp_test_ftp,
+    trace_powers,
+    training_load,
+)
 from rullo.bridge import EventHub
 from rullo.bus import TelemetryBus
 from rullo.config import Settings
@@ -35,11 +43,12 @@ from rullo.devices.simulated import SimulatedDevice
 from rullo.export import intervals, strava
 from rullo.export.http import UploadError
 from rullo.library import Library, route_info, workout_info
-from rullo.loop import SessionState, run_loop
+from rullo.loop import RideClock, SessionState, run_loop
 from rullo.physics import RiderParams
 from rullo.recorder import Point, ride_filename, write_fit
 from rullo.resistance import ResistanceController, ResistanceSettings
 from rullo.session import SessionMetrics
+from rullo.tcx import ride_to_tcx
 from rullo.webserver import (
     HttpError,
     Request,
@@ -49,6 +58,7 @@ from rullo.webserver import (
     redirect,
     serve_handler,
 )
+from rullo.workout import Workout
 
 logger = logging.getLogger(__name__)
 
@@ -57,7 +67,11 @@ _FONTS = {
     "/fonts/inter.woff2": "inter.woff2",
     "/fonts/space-grotesk.woff2": "space-grotesk.woff2",
 }
-_RIDE_URL = re.compile(r"^/api/rides/([0-9TZ]+)(/fit|/upload/(strava|intervals))?$")
+_RIDE_URL = re.compile(
+    r"^/api/rides/([0-9TZ]+)(/fit|/tcx|/upload/(strava|intervals))?$"
+)
+# A ramp test ends when power stays this far below target for this long.
+_RAMP_FAIL_FRACTION, _RAMP_FAIL_S = 0.85, 10.0
 
 
 @dataclass(frozen=True)
@@ -176,6 +190,8 @@ class App:
         self.hub = EventHub()
         self._ride: asyncio.Task[None] | None = None
         self._stop = asyncio.Event()
+        self._clock: RideClock | None = None
+        self._workout: Workout | None = None
         self._oauth_state = ""
 
     @property
@@ -220,8 +236,12 @@ class App:
             ),
         }
         self.hub.reset("config", config)
-        metrics = SessionMetrics(s.ftp)
+        metrics = SessionMetrics(s.ftp, s.max_hr or None)
         points: list[Point] = []
+        pauses: list[tuple[float, float]] = []
+        clock = RideClock(pedal_to_start=True)
+        self._clock, self._workout = clock, workout
+        ramp = workout is not None and workout.ramp_test
         error: str | None = None
         try:
             device = self._device_factory(req, s)
@@ -232,12 +252,26 @@ class App:
                 workout,
                 req.target_power,
                 ResistanceSettings(
-                    difficulty=s.difficulty, cadence_floor=s.cadence_floor
+                    difficulty=s.difficulty,
+                    # A ramp test must not ease off: failing is how it ends.
+                    cadence_floor=0 if ramp else s.cadence_floor,
+                    descent_scale=s.descent_scale,
+                    grade_cap=s.grade_cap,
                 ),
             )
             bus, state = TelemetryBus(), SessionState()
             pump = asyncio.ensure_future(
-                self._pump(bus, state, controller, metrics, points, workout, course)
+                self._pump(
+                    bus,
+                    state,
+                    clock,
+                    controller,
+                    metrics,
+                    points,
+                    pauses,
+                    workout,
+                    course,
+                )
             )
             try:
                 await run_loop(
@@ -249,6 +283,7 @@ class App:
                     stop=self._stop,
                     duration_s=duration,
                     state=state,
+                    clock=clock,
                 )
                 await asyncio.sleep(0)  # let the pump record the last sample
             finally:
@@ -257,61 +292,85 @@ class App:
         except Exception as exc:  # the ride so far is still saved below
             logger.exception("ride failed")
             error = str(exc) or type(exc).__name__
+        self._clock = self._workout = None
+        if pauses and pauses[-1][1] < 0 and points:  # ended while paused
+            pauses[-1] = (pauses[-1][0], points[-1].t)
         if not points:
             self.hub.reset("idle", {"error": error or "the ride ended before any data"})
             return
-        ride = self._save(ride_id, start, config, points, metrics, error)
+        ride = self._save(ride_id, start, config, points, metrics, pauses, ramp, error)
         self.hub.emit("done", ride)
 
     async def _pump(
         self,
         bus: TelemetryBus,
         state: SessionState,
+        clock: RideClock,
         controller: ResistanceController,
         metrics: SessionMetrics,
         points: list[Point],
-        workout: Any,
+        pauses: list[tuple[float, float]],
+        workout: Workout | None,
         course: Any,
     ) -> None:
+        """Record moving samples, track laps and pauses, stream events to the UI."""
         lap_key: int | None = None
+        was = clock.state
+        failing_since: float | None = None
+        ramp_failed = False
         async for sample in bus.subscribe():
+            if clock.state != was:  # pause or resume (pause intervals: (at, until))
+                if clock.state == "paused":
+                    metrics.pause()
+                    pauses.append((sample.t, -1.0))
+                elif was == "paused" and pauses:
+                    pauses[-1] = (pauses[-1][0], sample.t)
+                was = clock.state
+            moving = state.moving
             if workout is not None:
-                key = workout.step_index(sample.t)
+                key = workout.step_index(moving)
             elif course is not None:
                 key = int(state.distance // course.length)
             else:
                 key = 0
-            if lap_key is not None and key != lap_key:
-                metrics.new_lap(sample.t, state.distance)
-            lap_key = key
-            metrics.add(
-                sample.t,
-                sample.power,
-                sample.heart_rate,
-                sample.cadence,
-                state.distance,
-                state.elevation,
+            target = (
+                controller.planned_target(moving)
+                if controller.mode is Mode.ERG
+                else None
             )
-            points.append(
-                Point(
+            if clock.state == "riding":
+                if lap_key is not None and key != lap_key:
+                    metrics.new_lap(sample.t, state.distance)
+                lap_key = key
+                metrics.add(
                     sample.t,
                     sample.power,
                     sample.heart_rate,
                     sample.cadence,
-                    sample.speed or 0.0,
                     state.distance,
                     state.elevation,
                 )
-            )
-            target = (
-                controller.planned_target(sample.t)
-                if controller.mode is Mode.ERG
-                else None
-            )
+                points.append(
+                    Point(
+                        sample.t,
+                        sample.power,
+                        sample.heart_rate,
+                        sample.cadence,
+                        sample.speed or 0.0,
+                        state.distance,
+                        state.elevation,
+                    )
+                )
+                if workout is not None and workout.ramp_test and not ramp_failed:
+                    ramp_failed, failing_since = self._ramp_check(
+                        workout, moving, target, sample.power, failing_since
+                    )
             self.hub.emit(
                 "sample",
                 {
                     "t": sample.t,
+                    "moving": moving,
+                    "clock": clock.state,
                     "power": sample.power,
                     "cadence": sample.cadence,
                     "heart_rate": sample.heart_rate,
@@ -324,8 +383,54 @@ class App:
                     "step": key,
                     "np": metrics.normalized_power,
                     "tss": round(metrics.tss, 1),
+                    "ramp_failed": ramp_failed,
                 },
             )
+
+    def _ramp_check(
+        self,
+        workout: Workout,
+        moving: float,
+        target: int | None,
+        power: int | None,
+        failing_since: float | None,
+    ) -> tuple[bool, float | None]:
+        """Ramp test: after 10 s well below target, jump to the cool-down."""
+        if (
+            target is None
+            or workout.steps[workout.step_index(moving)].label != "Steady"
+        ):
+            return False, None
+        if (power or 0) >= target * _RAMP_FAIL_FRACTION:
+            return False, None
+        since = moving if failing_since is None else failing_since
+        if moving - since < _RAMP_FAIL_S:
+            return False, since
+        cooldown = workout.steps[-1]
+        if self._clock is not None:
+            self._clock.skip_to(cooldown.start)
+        logger.info("ramp test ended at %.0f s of moving time", moving)
+        return True, None
+
+    def pause(self) -> None:
+        if self._clock is None:
+            raise HttpError(409, "no ride in progress")
+        self._clock.pause()
+
+    def resume(self) -> None:
+        if self._clock is None:
+            raise HttpError(409, "no ride in progress")
+        self._clock.resume()
+
+    def skip(self) -> None:
+        clock, workout = self._clock, self._workout
+        if clock is None or workout is None:
+            raise HttpError(409, "only workout blocks can be skipped")
+        index = workout.step_index(clock.moving)
+        if index + 1 >= len(workout.steps):
+            self._stop.set()  # skipping the last block finishes the workout
+        else:
+            clock.skip_to(workout.steps[index + 1].start)
 
     def _save(
         self,
@@ -334,9 +439,13 @@ class App:
         config: dict[str, Any],
         points: list[Point],
         metrics: SessionMetrics,
+        pauses: list[tuple[float, float]],
+        ramp: bool,
         error: str | None,
     ) -> dict[str, Any]:
-        write_fit(self.library.rides_dir / f"{ride_id}.fit", start, points, metrics)
+        closed = [p for p in pauses if p[1] >= p[0]]
+        fit = self.library.rides_dir / f"{ride_id}.fit"
+        write_fit(fit, start, points, metrics, closed)
         trace, next_t = [], 0.0
         for p in points:  # about one point per second is plenty for charts
             if p.t >= next_t:
@@ -348,9 +457,11 @@ class App:
                         p.cadence,
                         round(p.speed, 2),
                         round(p.elevation, 1),
+                        round(p.distance, 1),
                     ]
                 )
                 next_t = p.t + 1.0
+        powers = trace_powers(trace)
         ride = {
             "id": ride_id,
             "started_at": start.isoformat(),
@@ -360,12 +471,27 @@ class App:
             "route": config["route"]["name"] if config["route"] else None,
             "workout": config["workout"]["name"] if config["workout"] else None,
             "summary": metrics.summary(),
+            "best_powers": best_powers(powers),
+            "ramp_test": {"estimated_ftp": ramp_test_ftp(powers)} if ramp else None,
             "trace": trace,
             "uploads": {},
             "error": error,
         }
         self.library.save_ride(ride_id, ride)
         return ride
+
+    def progress(self) -> dict[str, Any]:
+        """Power curve (all time and last 90 days), FTP estimate and training load."""
+        rides = self.library.rides()
+        recent = power_curve(rides, since=datetime.now(UTC).date() - timedelta(days=90))
+        return {
+            "curve": power_curve(rides),
+            "curve_90d": recent,
+            "ftp_estimate": ftp_estimate(recent),
+            "ftp": self.settings.ftp,
+            "load": training_load(rides),
+            "rides": len(rides),
+        }
 
     # --- uploads -------------------------------------------------------------
 
@@ -433,7 +559,9 @@ class App:
                 if path == "/api/routes":
                     key = self.library.import_route(filename, req.body)
                 else:
-                    key = self.library.import_workout(filename, req.body)
+                    key = self.library.import_workout(
+                        filename, req.body, self.settings.ftp
+                    )
             except (ValueError, KeyError, SyntaxError, UnicodeDecodeError) as exc:
                 raise HttpError(400, f"could not import {filename}: {exc}") from exc
             return json_response({"id": key})
@@ -458,6 +586,16 @@ class App:
         if path == "/api/ride/start" and method == "POST":
             ride_id = self.start_ride(RideRequest.parse(req.json(), self.library))
             return json_response({"id": ride_id})
+        if (
+            path in ("/api/ride/pause", "/api/ride/resume", "/api/ride/skip")
+            and method == "POST"
+        ):
+            {"pause": self.pause, "resume": self.resume, "skip": self.skip}[
+                path.rsplit("/", 1)[1]
+            ]()
+            return json_response({"riding": self.riding})
+        if path == "/api/progress" and method == "GET":
+            return json_response(self.progress())
         if path == "/api/ride/stop" and method == "POST":
             await self.stop_ride()
             return json_response({"riding": self.riding})
@@ -503,6 +641,17 @@ class App:
                     {
                         "Content-Disposition": (
                             f'attachment; filename="rullo-{ride_id}.fit"'
+                        )
+                    },
+                )
+            if sub == "/tcx" and req.method == "GET":
+                return Response(
+                    200,
+                    ride_to_tcx(self.library.ride(ride_id)),
+                    "application/vnd.garmin.tcx+xml",
+                    {
+                        "Content-Disposition": (
+                            f'attachment; filename="rullo-{ride_id}.tcx"'
                         )
                     },
                 )

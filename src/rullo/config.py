@@ -41,6 +41,9 @@ class Settings:
     ftp: int = 250
     difficulty: float = 0.5  # fraction of real grade the trainer applies
     cadence_floor: int = 55
+    descent_scale: float = 0.5  # descents feel this fraction of the scaled grade
+    grade_cap: float = 15.0  # % the trainer never exceeds
+    max_hr: int = 0  # bpm; 0 = unknown (no heart-rate zones)
     sim_power: int = 200  # what the simulated rider holds in SIM mode
     strava_client_id: str = ""
     strava_client_secret: str = ""
@@ -65,6 +68,9 @@ class Settings:
             "ftp",
             "difficulty",
             "cadence_floor",
+            "descent_scale",
+            "grade_cap",
+            "max_hr",
             "sim_power",
             "strava_client_id",
             "strava_client_secret",
@@ -110,6 +116,9 @@ class Settings:
         if self.ftp <= 0 or self.mass_kg <= 0:
             raise ValueError("FTP and mass must be positive")
         self.difficulty = min(max(self.difficulty, 0.0), 1.0)
+        self.descent_scale = min(max(self.descent_scale, 0.0), 1.0)
+        self.grade_cap = min(max(self.grade_cap, 1.0), 25.0)
+        self.max_hr = max(self.max_hr, 0)
 
     def public(self) -> dict[str, Any]:
         """Settings for the UI: secrets are reported as set/unset only."""

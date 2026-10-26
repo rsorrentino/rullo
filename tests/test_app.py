@@ -47,6 +47,13 @@ def _sim(req: RideRequest, s: Settings) -> Device:
     return SimulatedDevice(mode=req.mode, rider_power=s.sim_power, sleep=_fast)
 
 
+class _Cracks(SimulatedDevice):
+    """A simulated rider who cannot push more than 260 W, for ramp tests."""
+
+    def _next_power(self) -> int:
+        return min(super()._next_power(), 260)
+
+
 class Client:
     def __init__(self, port: int) -> None:
         self.port = port
@@ -338,3 +345,102 @@ async def test_deleting_a_ride(running: tuple[App, Client], tmp_path: Path) -> N
     assert status == 404
     status, _, _ = await client.request("DELETE", "/api/rides/..%2Fsettings")
     assert status == 404
+
+
+async def test_pause_resume_and_skip(running: tuple[App, Client]) -> None:
+    app, client = running
+    events = client.events()
+    status, _, body = await client.request(
+        "POST", "/api/workouts?filename=q.zwo", raw=SHORT_ZWO
+    )
+    assert status == 200
+    await client.json("POST", "/api/ride/start", {"workout": "quick-test"})
+    async for name, data in events:
+        if name == "sample" and data["moving"] >= 2.0:
+            break
+    await client.json("POST", "/api/ride/pause")
+    async for name, data in events:
+        if name == "sample" and data["clock"] == "paused":
+            paused_at = data["moving"]
+            break
+    seen = []
+    async for _name, data in events:  # time does not move while paused
+        seen.append(data["moving"])
+        if len(seen) == 8:
+            break
+    assert max(seen) == paused_at
+    await client.json("POST", "/api/ride/resume")
+    await client.json("POST", "/api/ride/skip")  # into the 120% block
+    async for name, data in events:
+        if name == "sample" and data["clock"] == "riding" and data["step"] == 1:
+            assert data["moving"] >= 10.0
+            break
+    done = (await _until(events, "done"))[-1][1]
+    summary = done["summary"]
+    assert summary["moving_time"] < 30.0  # the skipped seconds were not ridden
+    assert summary["power_zones_s"] and sum(summary["power_zones_s"]) > 0
+    with fitdecode.FitReader(
+        app.library.ride_path(done["id"], ".fit").read_bytes()
+    ) as reader:
+        kinds = [
+            f.get_value("event_type")
+            for f in reader
+            if f.frame_type == fitdecode.FIT_FRAME_DATA and f.name == "event"
+        ]
+    assert kinds.count("stop_all") == 2  # the pause and the end
+    status, _, _ = await client.request("POST", "/api/ride/pause")
+    assert status == 409
+
+
+async def test_ramp_test_ends_on_failure_and_estimates_ftp(tmp_path: Path) -> None:
+    def cracking(req: RideRequest, s: Settings) -> Device:
+        return _Cracks(mode=req.mode, rider_power=s.sim_power, sleep=_fast)
+
+    app = App(
+        Library(tmp_path),
+        Settings(ftp=250),
+        tmp_path / "s.json",
+        device_factory=cracking,
+    )
+    workout = app.library.workouts()["ftp-ramp-test"]
+    assert workout.ramp_test
+    app.start_ride(RideRequest.parse({"workout": "ftp-ramp-test"}, app.library))
+    assert app._ride is not None
+    await app._ride
+    ride = app.library.rides()[0]
+    # The rider fails at the 320 W step (260 W < 85% of it) about 1,090 s in;
+    # the test then jumps to the 5-minute cool-down, skipping ~400 s of steps.
+    ridden = ride["summary"]["moving_time"]
+    assert 1300 < ridden < workout.duration - 300
+    estimated = ride["ramp_test"]["estimated_ftp"]
+    assert estimated == pytest.approx(0.75 * 260, abs=6)
+
+
+async def test_progress_tcx_and_erg_import(running: tuple[App, Client]) -> None:
+    app, client = running
+    events = client.events()
+    await client.json(
+        "POST",
+        "/api/ride/start",
+        {"mode": "erg", "target_power": 250, "duration_s": 70, "route": "alpine-loop"},
+    )
+    ride = (await _until(events, "done"))[-1][1]
+    assert ride["best_powers"]["60"] > 200
+    progress = await client.json("GET", "/api/progress")
+    assert progress["curve"]["60"] == ride["best_powers"]["60"]
+    assert progress["load"][-1]["tss"] == ride["summary"]["tss"]
+    status, headers, tcx = await client.request("GET", f"/api/rides/{ride['id']}/tcx")
+    assert status == 200 and "attachment" in headers["content-disposition"]
+    assert b"<Trackpoint>" in tcx and b"<tpx:Watts>" in tcx and b"DistanceMeters" in tcx
+    erg = (
+        b"[COURSE HEADER]\nFILE NAME = Imported Erg\nMINUTES WATTS\n"
+        b"[END COURSE HEADER]\n"
+        b"[COURSE DATA]\n0 100\n10 100\n[END COURSE DATA]\n"
+    )
+    status, _, body = await client.request(
+        "POST", "/api/workouts?filename=x.erg", raw=erg
+    )
+    assert status == 200 and json.loads(body)["id"] == "imported-erg"
+    lib = await client.json("GET", "/api/library")
+    imported = next(w for w in lib["workouts"] if w["id"] == "imported-erg")
+    assert imported["steps"][0]["low"] == pytest.approx(100 / app.settings.ftp)

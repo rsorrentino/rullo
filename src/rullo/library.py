@@ -22,8 +22,9 @@ from importlib.resources import files
 from pathlib import Path
 from typing import Any
 
+from rullo.analytics import best_powers, trace_powers
 from rullo.course import Course, parse_gpx
-from rullo.workout import Workout, parse_zwo
+from rullo.workout import Workout, parse_erg, parse_zwo, to_zwo
 
 _SLUG = re.compile(r"[^a-z0-9]+")
 
@@ -81,9 +82,15 @@ class Library:
         self._routes = None
         return key
 
-    def import_workout(self, filename: str, data: bytes) -> str:
-        text = data.decode("utf-8")
-        workout = parse_zwo(text, Path(filename).stem)
+    def import_workout(self, filename: str, data: bytes, ftp: int = 250) -> str:
+        """Import a .zwo, or an .erg/.mrc converted to .zwo (watts use ``ftp``)."""
+        text = data.decode("utf-8-sig")
+        stem = Path(filename).stem
+        if filename.lower().endswith((".erg", ".mrc")):
+            workout = parse_erg(text, ftp, stem)
+            text = to_zwo(workout)
+        else:
+            workout = parse_zwo(text, stem)
         key = slug(workout.name)
         self._save("workouts", key + ".zwo", text)
         self._workouts = None
@@ -102,7 +109,9 @@ class Library:
                 ride = json.loads(path.read_text(encoding="utf-8"))
             except (OSError, ValueError):
                 continue
-            ride.pop("trace", None)
+            trace = ride.pop("trace", None) or []
+            if "best_powers" not in ride:  # rides saved before the power curve
+                ride["best_powers"] = best_powers(trace_powers(trace))
             out.append(ride)
         return out
 
@@ -152,6 +161,7 @@ def workout_info(key: str, workout: Workout) -> dict[str, Any]:
         "duration": workout.duration,
         "tss": round(workout.tss()),
         "intensity_factor": round(workout.intensity_factor(), 2),
+        "ramp_test": workout.ramp_test,
         "steps": [
             {
                 "start": s.start,
