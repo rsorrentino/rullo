@@ -5,7 +5,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Rullo</title>
-<link rel="icon" href="data:,">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <style>
   :root {
     --ground: #0b0f14; --surface: #141a22; --elevated: #171e27;
@@ -59,12 +59,16 @@
     outline: 2px solid var(--power); outline-offset: 2px; }
 
   /* App shell */
-  .shell { display: grid; grid-template-columns: 220px minmax(0, 1fr); min-height: 100%; }
+  :root { --side-w: 220px; --content-max: 1120px; --pad-x: 40px; --pad-y: 32px; }
+  .shell { display: grid; grid-template-columns: var(--side-w) minmax(0, 1fr); min-height: 100%;
+    background: linear-gradient(to right, #0d1218 var(--side-w), transparent var(--side-w)); }
   .side { background: #0d1218; border-right: 1px solid var(--hairline); padding: 22px 14px;
-    display: flex; flex-direction: column; gap: 4px; position: sticky; top: 0; height: 100vh; }
+    display: flex; flex-direction: column; gap: 4px; position: sticky; top: 0; height: 100vh;
+    align-self: start; }
   .logo { display: flex; align-items: center; gap: 10px; font-weight: 700; letter-spacing: 0.24em;
     margin: 0 8px 22px; }
-  .logo svg { width: 18px; height: 18px; }
+  .logo img { width: 28px; height: 28px; border-radius: 7px; flex: none; }
+  a.logo { color: inherit; text-decoration: none; }
   .nav { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: 10px;
     color: var(--muted); text-decoration: none; font-size: 15px; }
   .nav:hover { color: var(--ink); background: rgba(255, 255, 255, 0.03); }
@@ -75,9 +79,12 @@
     border: 1px solid var(--hairline); border-radius: 12px; background: var(--surface); }
   .avatar { width: 32px; height: 32px; border-radius: 50%; background: var(--power); color: #140a02;
     display: grid; place-items: center; font-weight: 700; flex: none; }
-  main.view { padding: 32px 40px; max-width: 1180px; width: 100%; }
-  .head { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px;
-    margin-bottom: 22px; flex-wrap: wrap; }
+  main.view, .sum-wrap { padding: var(--pad-y) var(--pad-x); max-width: calc(var(--content-max) + 2 * var(--pad-x));
+    width: 100%; margin: 0 auto; }
+  .head { display: flex; justify-content: space-between; align-items: center; gap: 12px 20px;
+    margin-bottom: 24px; flex-wrap: wrap; min-height: 56px; }
+  .head > div:first-child { flex: 1 1 320px; min-width: 0; }
+  .head p { margin-top: 4px; }
   h1 { font-size: 26px; font-weight: 600; line-height: 1.2; }
   h2 { font-size: 17px; font-weight: 600; }
   .stack { display: grid; gap: 12px; }
@@ -112,6 +119,8 @@
   th { text-align: left; font: 600 11px/1 var(--sans); letter-spacing: 0.12em; text-transform: uppercase;
     color: var(--faint); padding: 10px 12px; border-bottom: 1px solid var(--hairline); }
   td { padding: 12px; border-bottom: 1px solid var(--hairline); }
+  td.nowrap, th { white-space: nowrap; }
+  tbody tr:last-child td { border-bottom: 0; }
   tbody tr.click { cursor: pointer; }
   tbody tr.click:hover { background: rgba(255, 255, 255, 0.02); }
   .empty { padding: 40px; text-align: center; color: var(--muted); }
@@ -167,12 +176,16 @@
   #m-spd .dot { background: var(--speed); } #m-dist .dot { background: var(--distance); }
 
   /* Summary */
-  .summary { position: fixed; inset: 0; background: var(--ground); overflow: auto; padding: 24px; z-index: 20; }
-  .sum-wrap { max-width: 1100px; margin: 0 auto; display: grid; gap: 16px; }
-  .sum-head { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+  /* The summary sits in the content area, so the navigation stays put. */
+  .summary { position: fixed; top: 0; right: 0; bottom: 0; left: var(--side-w);
+    background: var(--ground); overflow: auto; z-index: 20; }
+  .sum-wrap { display: grid; gap: 16px; }
+  .sum-head { display: flex; align-items: center; gap: 12px 14px; flex-wrap: wrap; margin-bottom: 8px; }
+  .sum-head .grow { flex: 1 1 280px; }
+  .sum-head .sub { margin-top: 4px; }
   .check { width: 36px; height: 36px; border-radius: 10px; display: grid; place-items: center;
     background: rgba(52, 211, 153, 0.15); color: var(--success); font-weight: 700; flex: none; }
-  .tiles { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; }
+  .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 12px; }
   .tile { background: var(--surface); border: 1px solid var(--hairline); border-radius: 12px; padding: 14px 16px; }
   .tile .num { font-size: 34px; margin-top: 8px; }
   .sum-body { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: 16px; }
@@ -186,27 +199,39 @@
   .kv .num { font-size: 24px; margin-top: 6px; }
   .uploads { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
 
-  @media (max-width: 900px) {
+  @media (max-width: 1024px) {
+    :root { --pad-x: 24px; --pad-y: 24px; }
+    .shell { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto 1fr; align-content: start;
+      background: none; }
+    .summary { left: 0; top: 57px; }
+    .side { position: sticky; top: 0; z-index: 10; height: 57px; flex-direction: row; align-items: center;
+      gap: 4px; padding: 10px var(--pad-x); border-right: 0; border-bottom: 1px solid var(--hairline);
+      overflow-x: auto; scrollbar-width: none; }
+    .side::-webkit-scrollbar { display: none; }
+    .logo { margin: 0 14px 0 0; flex: none; }
+    .nav { padding: 7px 12px; font-size: 14px; flex: none; }
+    .rider { display: none; }
     .grid3 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-    .tiles { grid-template-columns: repeat(3, minmax(0, 1fr)); }
     .sum-body { grid-template-columns: minmax(0, 1fr); }
   }
   @media (max-width: 760px) {
-    .shell { grid-template-columns: minmax(0, 1fr); }
-    .side { position: static; height: auto; flex-direction: row; flex-wrap: wrap; padding: 12px 16px;
-      border-right: 0; border-bottom: 1px solid var(--hairline); }
-    .logo { margin: 0 12px 0 0; width: 100%; }
-    .nav { padding: 6px 10px; font-size: 14px; }
-    .rider { display: none; }
-    main.view { padding: 20px 16px; }
+    :root { --pad-x: 16px; --pad-y: 20px; }
+    .logo span { display: none; }
     .grid3, .form { grid-template-columns: minmax(0, 1fr); }
+    .card.row { flex-wrap: wrap; }
+    .card.row > .pill { order: -1; margin-left: auto; }
+    .card.row > .grow { flex-basis: 100%; }
+    .card.row > .icon { display: none; }
+    .tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .tiles .tile:last-child:nth-child(odd) { grid-column: 1 / -1; }
+    .uploads { width: 100%; display: grid; grid-template-columns: 1fr 1fr; }
+    .uploads .btn { justify-content: center; }
     .hud { padding: 16px; gap: 12px; }
     .top { flex-direction: column; align-items: stretch; gap: 12px; }
     .hcard { width: 100%; }
     #elapsed { font-size: 32px; }
     .center-ctl { flex-direction: row; justify-content: space-between; }
     .dock { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-    .tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .hide-sm { display: none; }
   }
 </style>
@@ -221,13 +246,12 @@
   <symbol id="i-map" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2zM9 4v14M15 6v14"/></symbol>
   <symbol id="i-clock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
   <symbol id="i-gear" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/></symbol>
-  <symbol id="i-logo" viewBox="0 0 24 24"><path d="M3 20 14 4l-2 8h9L10 20l2-6z" fill="#ff7a1a"/></symbol>
 </svg>
 
 <!-- ============ App shell (when not riding) ============ -->
 <div class="shell" id="shell">
   <nav class="side" aria-label="Main">
-    <div class="logo"><svg><use href="#i-logo"/></svg>RULLO</div>
+    <a class="logo" href="#ride" aria-label="Rullo home"><img src="/logo.svg" alt="" width="28" height="28"><span>RULLO</span></a>
     <a class="nav" href="#ride" data-view="ride"><svg><use href="#i-bike"/></svg>Ride</a>
     <a class="nav" href="#workouts" data-view="workouts"><svg><use href="#i-dumbbell"/></svg>Workouts</a>
     <a class="nav" href="#routes" data-view="routes"><svg><use href="#i-map"/></svg>Routes</a>
@@ -241,10 +265,10 @@
   <main class="view" id="v-ride" hidden>
     <div class="head">
       <div><h1>Pair your sensors</h1>
-        <p class="muted small">Rullo talks to FTMS and Wahoo trainers, heart-rate straps and cadence sensors over Bluetooth. Everything runs locally — no account needed.</p></div>
-      <div class="seg" role="group" aria-label="Connection">
-        <button class="on" type="button">Bluetooth</button>
-        <button type="button" disabled title="ANT+ is planned for a later release">ANT+</button>
+        <p class="muted small">Trainers, heart-rate straps and cadence sensors over Bluetooth or ANT+. Everything runs locally.</p></div>
+      <div class="seg" role="group" aria-label="Radio to scan">
+        <button class="on" type="button" data-radio="bluetooth" aria-pressed="true">Bluetooth</button>
+        <button type="button" data-radio="ant" aria-pressed="false">ANT+</button>
       </div>
     </div>
     <div class="stack">
@@ -281,13 +305,13 @@
             <select id="workout-sel"></select></label>
           <label id="mode-wrap">Mode
             <select id="mode-sel">
-              <option value="sim">SIM — the route's gradient sets resistance</option>
-              <option value="erg">ERG — hold a fixed power</option>
-              <option value="free">Free — no resistance control</option>
+              <option value="sim">SIM · gradient sets resistance</option>
+              <option value="erg">ERG · hold a fixed power</option>
+              <option value="free">Free · no resistance control</option>
             </select></label>
           <label id="target-wrap" hidden>ERG target (W)
             <input type="number" id="target" min="50" max="1500" value="200"></label>
-          <label id="duration-wrap">Duration (minutes, empty = until you stop)
+          <label id="duration-wrap">Duration in minutes (optional)
             <input type="number" id="duration" min="1" max="600" placeholder="Ride until stopped"></label>
         </div>
         <div class="footer-bar">
@@ -505,6 +529,11 @@ const signed = (g) => `${g >= 0 ? "+" : ""}${g.toFixed(1)}%`;
 const km = (m) => (m / 1000).toFixed(m < 10000 ? 2 : 1);
 const zoneIndex = (fraction) => ZONES.findIndex(([max]) => fraction < max);
 const zoneColor = (i) => css(`--z${i + 1}`);
+function when(iso) {
+  const d = new Date(iso), sameYear = d.getFullYear() === new Date().getFullYear();
+  return d.toLocaleString([], { day: "numeric", month: "short", ...(sameYear ? {} : { year: "numeric" }),
+    hour: "2-digit", minute: "2-digit" });
+}
 function esc(s) { const d = document.createElement("div"); d.textContent = s ?? ""; return d.innerHTML; }
 
 let toastTimer;
@@ -580,7 +609,11 @@ function workoutBars(el, w) {
 // ---------- state ----------
 let library = { routes: [], workouts: [] };
 let settings = null;
-let devices = [{ id: "sim", name: "Simulated trainer", kind: "trainer", detail: "No hardware needed" }];
+const SIM_DEVICE = { id: "sim", name: "Simulated trainer", kind: "trainer", detail: "No hardware needed" };
+const scanned = { bluetooth: [], ant: [] };
+let radio = "bluetooth";
+let devices = [SIM_DEVICE];
+const isAnt = (id) => String(id).startsWith("ant:");
 const choice = {
   route: store.get("rullo.route") || "alpine-loop",
   workout: store.get("rullo.workout") || "",
@@ -597,12 +630,13 @@ const VIEWS = ["ride", "workouts", "routes", "history", "settings"];
 function showView() {
   const name = VIEWS.includes(location.hash.slice(1)) ? location.hash.slice(1) : "ride";
   for (const v of VIEWS) $(`v-${v}`).hidden = v !== name;
+  window.scrollTo(0, 0);  // every page starts at its title
   document.querySelectorAll(".nav").forEach((a) => a.classList.toggle("on", a.dataset.view === name));
   if (name === "history") loadHistory();
   if (name === "routes") renderRoutes();
   if (name === "workouts") renderWorkouts();
 }
-window.addEventListener("hashchange", showView);
+window.addEventListener("hashchange", () => { $("summary").hidden = true; showView(); });
 
 function renderRiderMeta() {
   if (settings) $("rider-meta").textContent = `${settings.mass_kg} kg · FTP ${settings.ftp} W`;
@@ -610,22 +644,27 @@ function renderRiderMeta() {
 
 function renderDevices() {
   const trainers = devices.filter((d) => d.kind === "trainer");
-  const straps = devices.filter((d) => d.kind === "heart_rate");
+  const sameRadio = (d) => choice.trainer !== "sim" && isAnt(d.id) === isAnt(choice.trainer);
+  const straps = devices.filter((d) => d.kind === "heart_rate" && sameRadio(d));
   $("trainer").innerHTML = trainers.map((d) => `<option value="${esc(d.id)}">${esc(d.name)} — ${esc(d.detail)}</option>`).join("");
   $("trainer").value = trainers.some((d) => d.id === choice.trainer) ? choice.trainer : "sim";
   choice.trainer = $("trainer").value;
   $("hr").innerHTML = `<option value="">None</option>` + straps.map((d) => `<option value="${esc(d.id)}">${esc(d.name)} — ${esc(d.detail)}</option>`).join("");
   $("hr").value = straps.some((d) => d.id === choice.hr) ? choice.hr : "";
   choice.hr = $("hr").value;
-  const cads = devices.filter((d) => d.kind === "cadence");
+  const cads = devices.filter((d) => d.kind === "cadence" && sameRadio(d));
   $("cad-sel").innerHTML = `<option value="">From the trainer, if it reports cadence</option>` + cads.map((d) => `<option value="${esc(d.id)}">${esc(d.name)} — ${esc(d.detail)}</option>`).join("");
   $("cad-sel").value = cads.some((d) => d.id === choice.cadence) ? choice.cadence : "";
   choice.cadence = $("cad-sel").value;
   const sim = choice.trainer === "sim";
   const trainer = devices.find((d) => d.id === choice.trainer);
-  $("trainer-tag").textContent = sim ? "Simulated" : trainer && trainer.detail.startsWith("Wahoo") ? "Wahoo · controllable" : "FTMS · controllable";
+  const detail = trainer ? trainer.detail : "";
+  $("trainer-tag").textContent = sim ? "Simulated" : detail.startsWith("Wahoo") ? "Wahoo · controllable"
+    : detail.includes("power meter") ? "ANT+ · power only" : isAnt(choice.trainer) ? "ANT+ FE-C · controllable" : "FTMS · controllable";
   $("power-src").textContent = sim ? "Power and cadence come from the simulated rider."
-    : "Power comes from the trainer. Wahoo KICKR SNAP trainers do not report cadence; pair a cadence sensor for it.";
+    : detail.startsWith("Wahoo") ? "Power comes from the trainer. Wahoo KICKR SNAP trainers do not report cadence; pair a cadence sensor for it."
+    : `Power comes from the trainer. Sensors must use the same radio (${isAnt(choice.trainer) ? "ANT+" : "Bluetooth"}).`;
+  $("hr").disabled = sim; $("cad-sel").disabled = sim;
   $("cad-state").className = choice.cadence ? "pill ok" : "pill";
   $("cad-state").innerHTML = `<span class="dot"></span>${choice.cadence ? "Selected" : sim ? "Simulated" : "Optional"}`;
   $("hr-state").className = choice.hr ? "pill ok" : "pill";
@@ -696,9 +735,9 @@ async function loadHistory() {
       const s = r.summary, tr = document.createElement("tr");
       tr.className = "click"; tr.tabIndex = 0;
       const ups = Object.keys(r.uploads || {}).map((k) => (k === "strava" ? "Strava" : "intervals.icu")).join(", ");
-      tr.innerHTML = `<td>${esc(new Date(r.started_at).toLocaleString([], { dateStyle: "medium", timeStyle: "short" }))}</td>
-        <td>${esc(r.name)}${r.error ? ' <span class="pill wait">ended early</span>' : ""}</td><td>${clock(s.elapsed)}</td><td>${km(s.distance)} km</td>
-        <td class="hide-sm">${s.normalized_power} W</td><td class="hide-sm">${s.tss}</td><td class="hide-sm muted">${esc(ups) || "–"}</td>`;
+      tr.innerHTML = `<td class="nowrap">${esc(when(r.started_at))}</td>
+        <td>${esc(r.name)}${r.error ? ' <span class="pill wait">ended early</span>' : ""}</td><td class="nowrap">${clock(s.elapsed)}</td><td class="nowrap">${km(s.distance)} km</td>
+        <td class="hide-sm nowrap">${s.normalized_power} W</td><td class="hide-sm">${s.tss}</td><td class="hide-sm muted">${esc(ups) || "–"}</td>`;
       const open = async () => showSummary(await api(`/api/rides/${r.id}`));
       tr.addEventListener("click", open);
       tr.addEventListener("keydown", (e) => { if (e.key === "Enter") open(); });
@@ -868,7 +907,7 @@ function showSummary(ride) {
   shownRide = ride;
   const s = ride.summary;
   $("sum-title").textContent = ride.error ? "Ride saved" : "Ride complete";
-  $("sum-sub").textContent = `${ride.name} · ${new Date(ride.started_at).toLocaleString([], { dateStyle: "medium", timeStyle: "short" })}`;
+  $("sum-sub").textContent = `${ride.name} · ${when(ride.started_at)}`;
   $("s-dur").textContent = clock(s.elapsed);
   $("s-dist").textContent = km(s.distance);
   $("s-avgp").textContent = s.avg_power; $("s-np").textContent = s.normalized_power; $("s-np2").textContent = s.normalized_power;
@@ -977,17 +1016,28 @@ $("workout-sel").addEventListener("change", (e) => { choice.workout = e.target.v
 $("mode-sel").addEventListener("change", (e) => { choice.mode = e.target.value; remember(); renderSession(); });
 $("wbar-clear").addEventListener("click", () => { choice.workout = ""; remember(); renderWorkouts(); renderSession(); });
 
+const radioLabel = () => (radio === "ant" ? "ANT+" : "Bluetooth");
+document.querySelectorAll(".seg [data-radio]").forEach((b) => b.addEventListener("click", () => {
+  radio = b.dataset.radio;
+  document.querySelectorAll(".seg [data-radio]").forEach((x) => {
+    x.classList.toggle("on", x === b); x.setAttribute("aria-pressed", String(x === b));
+  });
+  $("scan").textContent = `Scan for ${radioLabel()} devices`;
+  $("scan-note").textContent = radio === "ant" ? "Needs an ANT+ USB stick." : "";
+}));
+
 $("scan").addEventListener("click", async () => {
   const b = $("scan"); b.disabled = true; b.textContent = "Scanning…";
   $("trainer-state").className = "pill wait"; $("trainer-state").innerHTML = '<span class="dot"></span>Searching';
   try {
-    const result = await api("/api/devices?scan=1");
-    devices = result.devices;
-    const found = devices.length - 1;
-    $("scan-note").textContent = result.error || (found ? `Found ${found} device${found > 1 ? "s" : ""}.` : "Nothing found. Wake the trainer by pedalling, close other apps connected to it, and try again.");
+    const result = await api(`/api/devices?scan=1&radio=${radio}`);
+    scanned[radio] = result.devices.filter((d) => d.id !== "sim");
+    devices = [SIM_DEVICE, ...scanned.bluetooth, ...scanned.ant];
+    const found = scanned[radio].length;
+    $("scan-note").textContent = result.error || (found ? `Found ${found} ${radioLabel()} device${found > 1 ? "s" : ""}.` : "Nothing found. Wake the trainer by pedalling, close other apps connected to it, and try again.");
     renderDevices();
   } catch (e) { $("scan-note").textContent = e.message; }
-  b.disabled = false; b.textContent = "Scan again";
+  b.disabled = false; b.textContent = `Scan ${radioLabel()} again`;
   $("trainer-state").className = "pill ok"; $("trainer-state").innerHTML = '<span class="dot"></span>Ready';
 });
 
