@@ -17,6 +17,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   simulated trainer with a console HUD.
 - Injectable sleep on `SimulatedDevice` so tests run faster than real time.
 - CI running ruff, mypy and pytest; pre-commit hooks.
-- Browser Ride HUD (`rullo --web`): live power with zones, W/kg and %FTP, a
+- The app (`rullo`): pair sensors, pick routes and workouts, ride with a live
+  HUD, review NP/IF/TSS and laps, browse history, and change settings.
+- Bluetooth FTMS trainers (read power and cadence, set grade or target power)
+  and heart-rate straps via `bleak`, with automatic reconnection.
+- Course model with GPX import; three synthetic demo routes.
+- `.zwo` workouts in ERG mode; six bundled workouts.
+- Resistance controller: difficulty scaling, rate limiting, ERG ramp clamp and
+  cadence-floor release.
+- Session metrics (NP, IF, TSS, laps) and a dependency-free `.fit` recorder.
+- Strava (OAuth) and intervals.icu uploads.
+- `rullo ride` terminal rides with `--route` and `--workout`.
+- Browser Ride HUD (first version, `rullo --web`, now replaced by the app): live power with zones, W/kg and %FTP, a
   course/ERG card, an elevation strip, the metric dock and a ride summary,
   streamed from the core by `rullo.bridge` over Server-Sent Events.
