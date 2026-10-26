@@ -15,8 +15,8 @@ Strava or intervals.icu.
 | ![Pairing screen](docs/screenshots/pair.png) | ![Workout picker](docs/screenshots/workouts.png) |
 | **Ride summary** | **Routes** |
 | ![Ride summary with power chart and laps](docs/screenshots/summary.png) | ![Route picker](docs/screenshots/routes.png) |
-
-<p align="center"><img src="docs/screenshots/ride-phone.png" alt="Ride screen on a phone-sized window" width="260"></p>
+| **History** | **Ride screen on a phone** |
+| ![Ride history](docs/screenshots/history.png) | <img src="docs/screenshots/ride-phone.png" alt="Ride screen on a phone-sized window" width="240"> |
 
 ## Quickstart
 
@@ -34,7 +34,8 @@ In the app:
 3. **Start ride**: the HUD shows power with zones, the workout or course card,
    the live elevation profile, cadence, heart rate, speed and distance.
 4. **Summary**: NP, IF, TSS and laps; *Save .fit*, *Upload to Strava* or
-   *Upload to intervals.icu*. Every ride is in **History**.
+   *Upload to intervals.icu*. Every ride is in **History**, where you can reopen
+   or delete it.
 
 Set your weight, FTP, trainer difficulty and the upload accounts in
 **Settings**. For Strava, create an API application at

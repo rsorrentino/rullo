@@ -34,6 +34,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   The ride screen has a power ring gauge against FTP, a workout interval
   strip, a 2x2 metric grid and the route profile.
 - Per-lap NP and estimated calories in the ride summary.
+- Delete rides from History or the ride summary (`DELETE /api/rides/<id>`);
+  copies already uploaded elsewhere are not touched.
 - Logo and favicon, and a consistent layout on every page and screen size.
 - CONTRIBUTING, CODE_OF_CONDUCT, SECURITY, and issue and pull request templates.
 - Course model with GPX import; three synthetic demo routes.
