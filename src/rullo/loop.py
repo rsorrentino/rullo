@@ -40,16 +40,25 @@ async def run_loop(
     bus: TelemetryBus,
     params: RiderParams | None = None,
     grade: float = 0.0,
+    target_power: int | None = None,
     max_ticks: int | None = None,
     duration_s: float | None = None,
+    state: SessionState | None = None,
 ) -> SessionState:
-    """Pull telemetry, compute speed, publish enriched samples, integrate distance."""
+    """Pull telemetry, compute speed, publish enriched samples, integrate distance.
+
+    The loop is the only writer of resistance commands: after connecting it
+    sends ``grade`` (SIM mode) and, if given, ``target_power`` (ERG mode).
+    """
     rider = params or RiderParams()
-    state = SessionState()
+    state = state if state is not None else SessionState()
     prev_t: float | None = None
     ticks = 0
     await device.connect()
     try:
+        await device.set_grade(grade)
+        if target_power is not None:
+            await device.set_target_power(target_power)
         async for sample in device.telemetry():
             dt = 0.0 if prev_t is None else sample.t - prev_t
             prev_t = sample.t
@@ -82,31 +91,35 @@ async def run(
     params: RiderParams | None = None,
     course_grade: float = 0.0,
     duration_s: float = 60.0,
+    target_power: int | None = None,
 ) -> SessionState:
     """Run a session against ``device``, printing a one-line HUD per tick."""
     bus = TelemetryBus()
+    state = SessionState()
     hud = bus.subscribe()
-    printer = asyncio.ensure_future(_print_hud(hud, course_grade))
-    await device.set_grade(course_grade)
+    printer = asyncio.ensure_future(_print_hud(hud, state, course_grade))
     try:
         return await run_loop(
-            device, bus, params=params, grade=course_grade, duration_s=duration_s
+            device,
+            bus,
+            params=params,
+            grade=course_grade,
+            target_power=target_power,
+            duration_s=duration_s,
+            state=state,
         )
     finally:
         printer.cancel()
         await asyncio.gather(printer, return_exceptions=True)
 
 
-async def _print_hud(samples: AsyncIterator[Telemetry], course_grade: float) -> None:
-    distance_m = 0.0
-    prev_t: float | None = None
+async def _print_hud(
+    samples: AsyncIterator[Telemetry], state: SessionState, course_grade: float
+) -> None:
     async for sample in samples:
-        dt = 0.0 if prev_t is None else sample.t - prev_t
-        prev_t = sample.t
-        distance_m += (sample.speed or 0.0) * dt
         speed_kmh = (sample.speed or 0.0) * 3.6
         print(
             f"P:{sample.power or 0:>4}W  C:{sample.cadence or 0:>3}rpm  "
             f"HR:{sample.heart_rate or 0:>3}bpm  V:{speed_kmh:5.1f}km/h  "
-            f"G:{course_grade:+.1f}%  D:{distance_m / 1000.0:6.3f}km"
+            f"G:{course_grade:+.1f}%  D:{state.distance / 1000.0:6.3f}km"
         )
