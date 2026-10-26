@@ -92,3 +92,20 @@ def test_lap_np_and_calories() -> None:
     assert laps[1]["normalized_power"] == 150
     s = m.summary()
     assert s["calories"] == round(s["work_kj"] / 4.184 / 0.24)  # type: ignore[operator]
+
+
+def test_pause_excludes_the_gap_and_zones_add_up() -> None:
+    m = SessionMetrics(ftp=200, max_hr=200)
+    for i in range(0, 241):  # 60 s at 200 W, HR 150
+        m.add(i / 4, 200, 150, 90, i, 0.0)
+    m.pause()
+    for i in range(0, 241):  # resumes 10 minutes later at 100 W
+        m.add(660 + i / 4, 100, 110, 90, 240 + i, 0.0)
+    s = m.summary()
+    assert s["moving_time"] == pytest.approx(120.0)
+    assert s["avg_power"] == 150
+    zones = s["power_zones_s"]
+    assert isinstance(zones, list) and sum(zones) == 120
+    assert zones[3] == 60 and zones[0] == 60  # 100% FTP is Z4, 50% is Z1
+    hr = s["hr_zones_s"]
+    assert isinstance(hr, list) and hr[2] == 60 and hr[0] == 60  # 75% and 55% of max

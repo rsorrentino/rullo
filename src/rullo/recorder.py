@@ -192,15 +192,29 @@ def _fit_time(start: datetime, t: float) -> int:
     return int(start.timestamp() + t) - _FIT_EPOCH
 
 
-def encode_fit(start: datetime, points: list[Point], metrics: SessionMetrics) -> bytes:
-    """Encode a whole ride as FIT activity bytes."""
+def encode_fit(
+    start: datetime,
+    points: list[Point],
+    metrics: SessionMetrics,
+    pauses: list[tuple[float, float]] | None = None,
+) -> bytes:
+    """Encode a whole ride as FIT activity bytes.
+
+    ``pauses`` are (paused at, resumed at) offsets in seconds; each becomes a
+    timer stop and start event, so readers count moving time correctly.
+    """
     if not points:
         raise ValueError("cannot record an empty ride")
     enc = _Encoder()
-    ts0, ts_end = _fit_time(start, 0.0), _fit_time(start, points[-1].t)
+    ts0, ts_end = _fit_time(start, points[0].t), _fit_time(start, points[-1].t)
     enc.write(_FILE_ID, [4, _MANUFACTURER_DEVELOPMENT, 0, 1, ts0])
     enc.write(_EVENT, [ts0, _EVENT_TIMER, _TYPE_START])
+    pending = sorted(pauses or [])
     for p in points:
+        while pending and pending[0][1] <= p.t:
+            paused, resumed = pending.pop(0)
+            enc.write(_EVENT, [_fit_time(start, paused), _EVENT_TIMER, _TYPE_STOP_ALL])
+            enc.write(_EVENT, [_fit_time(start, resumed), _EVENT_TIMER, _TYPE_START])
         enc.write(
             _RECORD,
             [
@@ -249,9 +263,9 @@ def encode_fit(start: datetime, points: list[Point], metrics: SessionMetrics) ->
             ts0,
             _SPORT_CYCLING,
             _SUB_SPORT_INDOOR,
-            points[-1].t * 1000.0,
+            (points[-1].t - points[0].t) * 1000.0,
             total.time * 1000.0,
-            points[-1].distance * 100.0,
+            (points[-1].distance - points[0].distance) * 100.0,
             s["avg_hr"],
             s["max_hr"],
             s["avg_cadence"],
@@ -284,11 +298,15 @@ def encode_fit(start: datetime, points: list[Point], metrics: SessionMetrics) ->
 
 
 def write_fit(
-    path: Path, start: datetime, points: list[Point], metrics: SessionMetrics
+    path: Path,
+    start: datetime,
+    points: list[Point],
+    metrics: SessionMetrics,
+    pauses: list[tuple[float, float]] | None = None,
 ) -> Path:
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_suffix(".fit.part")
-    tmp.write_bytes(encode_fit(start, points, metrics))
+    tmp.write_bytes(encode_fit(start, points, metrics, pauses))
     tmp.replace(path)  # never leave a half-written ride behind
     return path
 

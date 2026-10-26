@@ -20,6 +20,13 @@ import math
 from dataclasses import dataclass, field
 
 _NP_WINDOW_S = 30
+# Upper bounds as fractions of FTP (Coggan zones 1-7) and of max HR (zones 1-5).
+POWER_ZONES = (0.55, 0.75, 0.90, 1.05, 1.20, 1.50, float("inf"))
+HR_ZONES = (0.60, 0.70, 0.80, 0.90, float("inf"))
+
+
+def _zone(value: float, bounds: tuple[float, ...]) -> int:
+    return next(i for i, upper in enumerate(bounds) if value < upper)
 
 
 @dataclass
@@ -53,6 +60,12 @@ class _NormalizedPower:
         if len(self._seconds) >= _NP_WINDOW_S:
             self._fourth_sum += (self._window_sum / _NP_WINDOW_S) ** 4
             self._fourth_count += 1
+
+    def restart(self, t: float) -> None:
+        """Continue after a pause: close the open bucket, skip the paused seconds."""
+        if self._second is not None and self._time:
+            self._push(self._energy / self._time)
+        self._second, self._energy, self._time = int(t), 0.0, 0.0
 
     def value(self, average: int) -> int:
         """NP in watts; under 30 s of data it falls back to ``average``."""
@@ -135,10 +148,14 @@ class SessionMetrics:
     """Accumulates ride metrics tick by tick; laps split the same stream."""
 
     ftp: int
+    max_hr: int | None = None
     total: _Totals = field(default_factory=lambda: _Totals(0.0, 0.0))
     laps: list[_Totals] = field(default_factory=lambda: [_Totals(0.0, 0.0)])
+    power_zone_s: list[float] = field(default_factory=lambda: [0.0] * len(POWER_ZONES))
+    hr_zone_s: list[float] = field(default_factory=lambda: [0.0] * len(HR_ZONES))
     _prev_t: float | None = None
     _prev_elevation: float | None = None
+    _resumed: bool = False
 
     def add(
         self,
@@ -155,8 +172,20 @@ class SessionMetrics:
         self._prev_t, self._prev_elevation = t, elevation
         watts = power or 0
         for span in (self.total, self.laps[-1]):
+            if self._resumed:
+                span.np.restart(t)
             span.add(t, dt, watts, heart_rate, cadence, climb)
             span.end_t, span.end_distance = t, distance
+        self._resumed = False
+        if self.ftp:
+            self.power_zone_s[_zone(watts / self.ftp, POWER_ZONES)] += dt
+        if self.max_hr and heart_rate:
+            self.hr_zone_s[_zone(heart_rate / self.max_hr, HR_ZONES)] += dt
+
+    def pause(self) -> None:
+        """The ride is paused: the next sample starts a fresh interval (dt = 0)."""
+        self._prev_t = None
+        self._resumed = True
 
     def new_lap(self, t: float, distance: float) -> None:
         if self.laps[-1].time > 0:
@@ -184,4 +213,8 @@ class SessionMetrics:
             # kJ-to-kcal factor, so kcal is roughly the mechanical work in kJ.
             "calories": round(work_kj / 4.184 / 0.24),
             "laps": [lap.summary() for lap in self.laps if lap.time > 0],
+            "moving_time": round(self.total.time, 1),
+            "power_zones_s": [round(s) for s in self.power_zone_s],
+            "hr_zones_s": [round(s) for s in self.hr_zone_s] if self.max_hr else None,
+            "max_hr_setting": self.max_hr,
         }

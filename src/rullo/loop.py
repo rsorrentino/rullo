@@ -28,6 +28,42 @@ from rullo.resistance import ResistanceController
 from rullo.telemetry import Telemetry
 
 
+class RideClock:
+    """Moving time: starts on the first pedal stroke and stops while paused.
+
+    Workouts and ride durations follow moving time, so pausing does not eat
+    into an interval. States: "waiting" (for the first pedal stroke),
+    "riding" and "paused".
+    """
+
+    def __init__(self, pedal_to_start: bool = True) -> None:
+        self.state = "waiting" if pedal_to_start else "riding"
+        self.moving = 0.0
+        self._prev_t: float | None = None
+        self.held = False  # resistance eased off for the current pause
+
+    def tick(self, t: float, power: int | None, cadence: int | None) -> float:
+        if self.state == "waiting" and ((power or 0) > 0 or (cadence or 0) > 0):
+            self.state = "riding"
+            self._prev_t = t  # moving time starts at the first stroke
+        if self.state == "riding" and self._prev_t is not None:
+            self.moving += t - self._prev_t
+        self._prev_t = t
+        return self.moving
+
+    def pause(self) -> None:
+        if self.state == "riding":
+            self.state, self.held = "paused", False
+
+    def resume(self) -> None:
+        if self.state == "paused":
+            self.state = "riding"
+
+    def skip_to(self, moving: float) -> None:
+        """Jump moving time forward, e.g. to the start of the next workout block."""
+        self.moving = max(self.moving, moving)
+
+
 @dataclass
 class SessionState:
     """Mutable session state updated each tick."""
@@ -37,6 +73,7 @@ class SessionState:
     elapsed: float = 0.0  # s
     grade: float = 0.0  # % at the current position
     elevation: float = 0.0  # m at the current position
+    moving: float = 0.0  # s of moving time (equals elapsed without a RideClock)
 
 
 async def run_loop(
@@ -51,12 +88,15 @@ async def run_loop(
     course: Course | None = None,
     controller: ResistanceController | None = None,
     stop: asyncio.Event | None = None,
+    clock: RideClock | None = None,
 ) -> SessionState:
     """Pull telemetry, compute speed, publish enriched samples, integrate distance.
 
     With a ``course`` the grade follows the rider's position, otherwise it is
     the constant ``grade``. Resistance commands go through ``controller`` every
     tick; without one, ``grade`` and ``target_power`` are sent once at start.
+    With a ``clock``, the controller and ``duration_s`` follow moving time, and
+    resistance eases off while the ride is paused.
     """
     rider = params or RiderParams()
     state = state if state is not None else SessionState()
@@ -84,8 +124,16 @@ async def run_loop(
                 state.elevation = course.elevation_at(state.distance)
             else:
                 state.elevation = state.distance * grade / 100.0
+            if clock is None:
+                state.moving = sample.t
+            else:
+                state.moving = clock.tick(sample.t, sample.power, sample.cadence)
             if controller is not None:
-                await controller.update(sample.t, state.grade, sample.cadence)
+                if clock is None or clock.state == "riding":
+                    await controller.update(state.moving, state.grade, sample.cadence)
+                elif clock.state == "paused" and not clock.held:
+                    await controller.hold()
+                    clock.held = True
             bus.publish(
                 Telemetry(
                     t=sample.t,
@@ -98,7 +146,7 @@ async def run_loop(
             ticks += 1
             if max_ticks is not None and ticks >= max_ticks:
                 break
-            if duration_s is not None and state.elapsed >= duration_s:
+            if duration_s is not None and state.moving >= duration_s:
                 break
             if stop is not None and stop.is_set():
                 break

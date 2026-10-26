@@ -113,3 +113,23 @@ def test_write_fit_is_atomic(tmp_path: Path) -> None:
 def test_empty_ride_is_rejected() -> None:
     with pytest.raises(ValueError):
         encode_fit(START, [], SessionMetrics(ftp=200))
+
+
+def test_pauses_become_timer_events() -> None:
+    metrics = SessionMetrics(ftp=200)
+    points = []
+    for t in [0.0, 1.0, 2.0, 32.0, 33.0]:
+        if t == 32.0:
+            metrics.pause()
+        p = Point(t, 150, None, None, 5.0, t * 5, 0.0)
+        metrics.add(p.t, p.power, None, None, p.distance, 0.0)
+        points.append(p)
+    frames = _decode(encode_fit(START, points, metrics, pauses=[(2.5, 32.0)]))
+    events = [
+        (e.get_value("event_type"), e.get_value("timestamp")) for e in frames["event"]
+    ]
+    assert [kind for kind, _ in events] == ["start", "stop_all", "start", "stop_all"]
+    assert (events[2][1] - events[1][1]).total_seconds() == pytest.approx(29.5, abs=1)
+    session = frames["session"][0]
+    assert session.get_value("total_timer_time") == pytest.approx(3.0)  # moving time
+    assert session.get_value("total_elapsed_time") == pytest.approx(33.0)
