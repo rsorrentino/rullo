@@ -74,3 +74,21 @@ def test_laps_split_the_ride() -> None:
     assert laps[1]["avg_power"] == 300
     assert laps[1]["distance"] == pytest.approx(50.0)
     assert laps[0]["avg_hr"] is None
+    assert laps[1]["normalized_power"] == 300  # short laps fall back to the average
+
+
+def test_lap_np_and_calories() -> None:
+    m = SessionMetrics(ftp=250)
+    _ride(m, 120, lambda t: 300 if t < 60 else 150)
+    m2 = SessionMetrics(ftp=250)
+    for i in range(0, 481):
+        t = i / 4
+        if t == 60.0:
+            m2.new_lap(t, 0.0)
+        m2.add(t, 300 if t < 60 else 150, None, None, 0.0, 0.0)
+    laps = m2.summary()["laps"]
+    assert isinstance(laps, list)
+    assert laps[0]["normalized_power"] == 300
+    assert laps[1]["normalized_power"] == 150
+    s = m.summary()
+    assert s["calories"] == round(s["work_kj"] / 4.184 / 0.24)  # type: ignore[operator]

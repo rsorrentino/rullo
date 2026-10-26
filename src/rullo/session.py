@@ -23,6 +23,45 @@ _NP_WINDOW_S = 30
 
 
 @dataclass
+class _NormalizedPower:
+    """NP: fourth-power mean of the 30 s rolling average of 1 s power buckets."""
+
+    _second: int | None = None
+    _energy: float = 0.0
+    _time: float = 0.0
+    _seconds: list[float] = field(default_factory=list)
+    _window_sum: float = 0.0
+    _fourth_sum: float = 0.0
+    _fourth_count: int = 0
+
+    def add(self, t: float, watts: int, dt: float) -> None:
+        second = int(t)
+        if self._second is None:
+            self._second = second
+        while second > self._second:
+            self._push(self._energy / self._time if self._time else watts)
+            self._second += 1
+            self._energy = self._time = 0.0
+        self._energy += watts * dt
+        self._time += dt
+
+    def _push(self, mean: float) -> None:
+        self._seconds.append(mean)
+        self._window_sum += mean
+        if len(self._seconds) > _NP_WINDOW_S:
+            self._window_sum -= self._seconds[-_NP_WINDOW_S - 1]
+        if len(self._seconds) >= _NP_WINDOW_S:
+            self._fourth_sum += (self._window_sum / _NP_WINDOW_S) ** 4
+            self._fourth_count += 1
+
+    def value(self, average: int) -> int:
+        """NP in watts; under 30 s of data it falls back to ``average``."""
+        if not self._fourth_count:
+            return average
+        return round(math.sqrt(math.sqrt(self._fourth_sum / self._fourth_count)))
+
+
+@dataclass
 class _Totals:
     """Running sums over a span of the ride (the whole session or one lap)."""
 
@@ -39,9 +78,16 @@ class _Totals:
     cadence_sum: float = 0.0
     cadence_time: float = 0.0
     ascent: float = 0.0
+    np: _NormalizedPower = field(default_factory=_NormalizedPower)
 
     def add(
-        self, dt: float, power: int, hr: int | None, cadence: int | None, climb: float
+        self,
+        t: float,
+        dt: float,
+        power: int,
+        hr: int | None,
+        cadence: int | None,
+        climb: float,
     ) -> None:
         self.time += dt
         self.energy += power * dt
@@ -54,13 +100,23 @@ class _Totals:
             self.cadence_sum += cadence * dt
             self.cadence_time += dt
         self.ascent += max(climb, 0.0)
+        self.np.add(t, power, dt)
+
+    @property
+    def avg_power(self) -> int:
+        return round(self.energy / self.time) if self.time else 0
+
+    @property
+    def normalized_power(self) -> int:
+        return self.np.value(self.avg_power)
 
     def summary(self) -> dict[str, float | int | None]:
         return {
             "start_t": self.start_t,
             "elapsed": self.end_t - self.start_t,
             "distance": self.end_distance - self.start_distance,
-            "avg_power": round(self.energy / self.time) if self.time else 0,
+            "avg_power": self.avg_power,
+            "normalized_power": self.normalized_power,
             "max_power": self.max_power,
             "avg_hr": round(self.hr_sum / self.hr_time) if self.hr_time else None,
             "max_hr": self.max_hr or None,
@@ -83,14 +139,6 @@ class SessionMetrics:
     laps: list[_Totals] = field(default_factory=lambda: [_Totals(0.0, 0.0)])
     _prev_t: float | None = None
     _prev_elevation: float | None = None
-    # Normalised power works on 1 s buckets and their 30 s rolling mean.
-    _bucket_second: int = 0
-    _bucket_energy: float = 0.0
-    _bucket_time: float = 0.0
-    _seconds: list[float] = field(default_factory=list)
-    _window_sum: float = 0.0
-    _fourth_sum: float = 0.0
-    _fourth_count: int = 0
 
     def add(
         self,
@@ -102,44 +150,21 @@ class SessionMetrics:
         elevation: float,
     ) -> None:
         dt = 0.0 if self._prev_t is None else t - self._prev_t
-        climb = (
-            0.0 if self._prev_elevation is None else elevation - self._prev_elevation
-        )
+        prev = self._prev_elevation
+        climb = 0.0 if prev is None else elevation - prev
         self._prev_t, self._prev_elevation = t, elevation
         watts = power or 0
         for span in (self.total, self.laps[-1]):
-            span.add(dt, watts, heart_rate, cadence, climb)
+            span.add(t, dt, watts, heart_rate, cadence, climb)
             span.end_t, span.end_distance = t, distance
-        self._add_np(t, watts, dt)
 
     def new_lap(self, t: float, distance: float) -> None:
         if self.laps[-1].time > 0:
             self.laps.append(_Totals(t, distance, t, distance))
 
-    def _add_np(self, t: float, watts: int, dt: float) -> None:
-        second = int(t)
-        while second > self._bucket_second:
-            mean = self._bucket_energy / self._bucket_time if self._bucket_time else 0.0
-            self._push_second(mean if self._bucket_time else watts)
-            self._bucket_second += 1
-            self._bucket_energy = self._bucket_time = 0.0
-        self._bucket_energy += watts * dt
-        self._bucket_time += dt
-
-    def _push_second(self, mean: float) -> None:
-        self._seconds.append(mean)
-        self._window_sum += mean
-        if len(self._seconds) > _NP_WINDOW_S:
-            self._window_sum -= self._seconds[-_NP_WINDOW_S - 1]
-        if len(self._seconds) >= _NP_WINDOW_S:
-            self._fourth_sum += (self._window_sum / _NP_WINDOW_S) ** 4
-            self._fourth_count += 1
-
     @property
     def normalized_power(self) -> int:
-        if not self._fourth_count:  # under 30 s: fall back to the average
-            return round(self.total.energy / self.total.time) if self.total.time else 0
-        return round(math.sqrt(math.sqrt(self._fourth_sum / self._fourth_count)))
+        return self.total.normalized_power
 
     @property
     def intensity_factor(self) -> float:
@@ -150,10 +175,13 @@ class SessionMetrics:
         return self.total.time / 3600.0 * self.intensity_factor**2 * 100.0
 
     def summary(self) -> dict[str, object]:
+        work_kj = self.total.energy / 1000.0
         return self.total.summary() | {
-            "normalized_power": self.normalized_power,
             "intensity_factor": round(self.intensity_factor, 2),
             "tss": round(self.tss),
             "ftp": self.ftp,
+            # Metabolic energy: about 24% gross efficiency cancels the
+            # kJ-to-kcal factor, so kcal is roughly the mechanical work in kJ.
+            "calories": round(work_kj / 4.184 / 0.24),
             "laps": [lap.summary() for lap in self.laps if lap.time > 0],
         }
