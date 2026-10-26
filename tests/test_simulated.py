@@ -17,20 +17,50 @@
 """SimulatedDevice and loop tests."""
 
 from rullo.bus import TelemetryBus
+from rullo.devices.base import Mode
 from rullo.devices.simulated import SimulatedDevice
 from rullo.loop import run_loop
+from rullo.telemetry import Telemetry
 
 
-async def test_simulated_yields_power() -> None:
-    device = SimulatedDevice(trace=[150.0, 250.0], rate_hz=100.0)
+async def _collect(device: SimulatedDevice, n: int) -> list[Telemetry]:
     await device.connect()
     samples = []
     async for sample in device.telemetry():
         samples.append(sample)
-        if len(samples) == 3:
+        if len(samples) == n:
             break
     await device.disconnect()
-    assert [s.power for s in samples] == [150.0, 250.0, 150.0]
+    return samples
+
+
+async def test_simulated_yields_power() -> None:
+    samples = await _collect(SimulatedDevice(rate_hz=100.0), 5)
+    assert all(s.power is not None for s in samples)
+
+
+async def test_simulated_is_deterministic_given_seed() -> None:
+    samples_a = await _collect(SimulatedDevice(rate_hz=100.0, seed=42), 10)
+    samples_b = await _collect(SimulatedDevice(rate_hz=100.0, seed=42), 10)
+    assert [s.power for s in samples_a] == [s.power for s in samples_b]
+
+
+async def test_erg_mode_converges_to_target() -> None:
+    device = SimulatedDevice(mode=Mode.ERG, rider_power=100, rate_hz=100.0)
+    await device.set_target_power(300)
+    samples = await _collect(device, 30)
+    assert samples[-1].power is not None
+    assert abs(samples[-1].power - 300) < 10
+
+
+async def test_bus_fans_out_to_multiple_subscribers() -> None:
+    bus = TelemetryBus()
+    sub_a = bus.subscribe()
+    sub_b = bus.subscribe()
+    sample = Telemetry(t=0.0, power=200, cadence=90, heart_rate=140, speed=5.0)
+    bus.publish(sample)
+    assert await anext(sub_a) == sample
+    assert await anext(sub_b) == sample
 
 
 async def test_loop_integrates_distance() -> None:

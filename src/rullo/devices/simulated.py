@@ -14,65 +14,89 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-"""Simulated device: generates or replays a power trace, no hardware needed."""
+"""Simulated device: a fake rider/trainer, no hardware needed."""
 
 import asyncio
 import logging
-import math
-from collections.abc import AsyncIterator, Sequence
+import random
+from collections.abc import AsyncIterator
 
+from rullo.devices.base import Mode
 from rullo.telemetry import Telemetry
 
 logger = logging.getLogger(__name__)
 
+# Fraction of the gap to the ERG target closed on each tick.
+_ERG_CONVERGENCE_RATE = 0.35
+# Power eased away per percent of positive grade in SIM mode, floor at 30%.
+_SIM_GRADE_EASE_PER_PERCENT = 0.015
+_SIM_GRADE_EASE_FLOOR = 0.3
+
 
 class SimulatedDevice:
-    """Yields telemetry at ``rate_hz``; replays ``trace`` or a generated wave."""
+    """Implements ``Device``; yields Telemetry at ``rate_hz`` with no hardware.
+
+    In SIM mode the rider holds ``rider_power`` but eases off slightly as the
+    course grade steepens. In ERG mode the emitted power converges toward the
+    last ``set_target_power``. FREE mode ignores grade entirely. Output is
+    deterministic for a given ``seed``.
+    """
 
     def __init__(
         self,
-        trace: Sequence[float] | None = None,
+        mode: Mode = Mode.SIM,
+        rider_power: int = 200,
+        cadence: int = 90,
+        heart_rate: int = 140,
         rate_hz: float = 4.0,
-        base_power: float = 200.0,
-        cadence: float = 90.0,
-        heart_rate: float = 140.0,
+        seed: int = 0,
     ) -> None:
-        self._trace = list(trace) if trace is not None else None
-        self._rate_hz = rate_hz
-        self._base_power = base_power
+        self._mode = mode
+        self._rider_power = rider_power
         self._cadence = cadence
         self._heart_rate = heart_rate
+        self._rate_hz = rate_hz
+        self._rng = random.Random(seed)
         self._connected = False
         self.grade = 0.0
-        self.target_power: float | None = None
+        self.target_power: int | None = None
+        self._erg_power = float(rider_power)
 
     async def connect(self) -> None:
         self._connected = True
 
     async def telemetry(self) -> AsyncIterator[Telemetry]:
         dt = 1.0 / self._rate_hz
-        i = 0
+        t = 0.0
         while self._connected:
-            t = i * dt
             yield Telemetry(
                 t=t,
-                power=self._power_at(i, t),
+                power=self._next_power(),
                 cadence=self._cadence,
                 heart_rate=self._heart_rate,
             )
-            i += 1
+            t += dt
             await asyncio.sleep(dt)
 
-    def _power_at(self, i: int, t: float) -> float:
-        if self._trace is not None:
-            return self._trace[i % len(self._trace)] if self._trace else 0.0
-        return self._base_power + 20.0 * math.sin(t / 5.0)
+    def _next_power(self) -> int:
+        jitter = self._rng.gauss(0.0, 2.0)
+        if self._mode is Mode.ERG and self.target_power is not None:
+            target = float(self.target_power)
+            self._erg_power += (target - self._erg_power) * _ERG_CONVERGENCE_RATE
+            return max(round(self._erg_power + jitter), 0)
+        if self._mode is Mode.SIM:
+            ease = max(
+                _SIM_GRADE_EASE_FLOOR,
+                1.0 - _SIM_GRADE_EASE_PER_PERCENT * max(self.grade, 0.0),
+            )
+            return max(round(self._rider_power * ease + jitter), 0)
+        return max(round(self._rider_power + jitter), 0)
 
     async def set_grade(self, percent: float) -> None:
         self.grade = percent
         logger.info("set_grade(%s)", percent)
 
-    async def set_target_power(self, watts: float) -> None:
+    async def set_target_power(self, watts: int) -> None:
         self.target_power = watts
         logger.info("set_target_power(%s)", watts)
 
