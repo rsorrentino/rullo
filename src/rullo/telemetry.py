@@ -27,7 +27,7 @@ class Telemetry:
     """
 
     t: float
-    power: float | None = None
-    cadence: float | None = None
-    heart_rate: float | None = None
+    power: int | None = None
+    cadence: int | None = None
+    heart_rate: int | None = None
     speed: float | None = None
