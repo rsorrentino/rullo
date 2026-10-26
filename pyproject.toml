@@ -10,7 +10,9 @@ readme = "README.md"
 requires-python = ">=3.12"
 license = "GPL-3.0-or-later"
 license-files = ["LICENSE"]
-dependencies = []
+dependencies = [
+    "bleak>=0.22",
+]
 
 [project.scripts]
 rullo = "rullo.__main__:main"
@@ -21,6 +23,7 @@ dev = [
     "pytest-asyncio>=0.24",
     "ruff>=0.6",
     "mypy>=1.11",
+    "fitdecode>=0.11.0",
 ]
 
 [tool.hatch.build.targets.wheel]
@@ -43,3 +46,7 @@ strict = true
 python_version = "3.12"
 mypy_path = "src"
 files = ["src", "tests"]
+
+[[tool.mypy.overrides]]
+module = ["fitdecode"]  # dev-only FIT decoder used to verify our writer
+ignore_missing_imports = true
