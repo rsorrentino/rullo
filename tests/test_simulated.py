@@ -98,17 +98,24 @@ async def test_loop_stops_at_duration() -> None:
 
 
 def test_cli_rides_a_short_session(capsys: pytest.CaptureFixture[str]) -> None:
-    assert main(["--duration", "0.2", "--rate", "20"]) == 0
+    assert main(["ride", "--duration", "0.2", "--rate", "20"]) == 0
     out = capsys.readouterr().out
     assert "P:" in out
     assert out.strip().splitlines()[-1].startswith("Done:")
 
 
+def test_cli_rides_a_route(capsys: pytest.CaptureFixture[str]) -> None:
+    assert (
+        main(["ride", "--route", "col-climb", "--duration", "0.3", "--rate", "20"]) == 0
+    )
+    assert "Done:" in capsys.readouterr().out
+
+
 def test_cli_erg_requires_target() -> None:
     with pytest.raises(SystemExit):
-        main(["--mode", "erg"])
+        main(["ride", "--mode", "erg"])
 
 
-def test_cli_web_erg_still_requires_target() -> None:
+def test_cli_rejects_unknown_route() -> None:
     with pytest.raises(SystemExit):
-        main(["--web", "--mode", "erg"])
+        main(["ride", "--route", "nowhere"])
