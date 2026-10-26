@@ -314,3 +314,27 @@ async def test_radios_cannot_be_mixed(running: tuple[App, Client]) -> None:
         assert status == 400, body
     status, _, _ = await client.request("GET", "/api/devices?radio=wifi")
     assert status == 400
+
+
+async def test_deleting_a_ride(running: tuple[App, Client], tmp_path: Path) -> None:
+    app, client = running
+    events = client.events()
+    await client.json(
+        "POST", "/api/ride/start", {"mode": "erg", "target_power": 180, "duration_s": 2}
+    )
+    ride = (await _until(events, "done"))[-1][1]
+    rides_dir = app.library.rides_dir
+    assert {p.suffix for p in rides_dir.iterdir()} == {".fit", ".json"}
+    status, _, _ = await client.request(
+        "DELETE", f"/api/rides/{ride['id']}", headers={"X-Rullo": "0"}
+    )
+    assert status == 403  # still guarded like every state change
+    assert await client.json("DELETE", f"/api/rides/{ride['id']}") == {
+        "deleted": ride["id"]
+    }
+    assert list(rides_dir.iterdir()) == []
+    assert await client.json("GET", "/api/rides") == []
+    status, _, _ = await client.request("DELETE", f"/api/rides/{ride['id']}")
+    assert status == 404
+    status, _, _ = await client.request("DELETE", "/api/rides/..%2Fsettings")
+    assert status == 404

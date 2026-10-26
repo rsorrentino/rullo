@@ -120,6 +120,13 @@ class Library:
             raise KeyError(ride_id)
         return path
 
+    def delete_ride(self, ride_id: str) -> None:
+        """Remove a saved ride: its .fit file and its summary."""
+        summary = self.ride_path(ride_id, ".json")  # raises KeyError if unknown
+        fit = self.rides_dir / (ride_id + ".fit")
+        fit.unlink(missing_ok=True)
+        summary.unlink()
+
     def save_ride(self, ride_id: str, ride: dict[str, Any]) -> None:
         self.rides_dir.mkdir(parents=True, exist_ok=True)
         tmp = self.rides_dir / (ride_id + ".json.part")

@@ -491,6 +491,9 @@ class App:
         try:
             if sub is None and req.method == "GET":
                 return json_response(self.library.ride(ride_id))
+            if sub is None and req.method == "DELETE":
+                self.library.delete_ride(ride_id)
+                return json_response({"deleted": ride_id})
             if sub == "/fit" and req.method == "GET":
                 data = self.library.ride_path(ride_id, ".fit").read_bytes()
                 return Response(

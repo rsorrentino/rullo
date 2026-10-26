@@ -52,6 +52,13 @@
   .btn.strava:hover { background: #e34402; }
   .btn:disabled { opacity: 0.5; cursor: default; }
   .btn.small { padding: 7px 14px; font-size: 14px; border-radius: 10px; }
+  .btn.danger { color: var(--danger); }
+  .btn.danger:hover { border-color: #f1c4c5; background: #fdf3f3; }
+  .icon-btn { border: 0; background: none; color: var(--faint); cursor: pointer; padding: 6px; border-radius: 8px;
+    display: inline-grid; place-items: center; }
+  .icon-btn:hover { color: var(--danger); background: #fdf3f3; }
+  .icon-btn svg { width: 18px; height: 18px; }
+  .icon-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   .btn svg { width: 16px; height: 16px; }
   .pill { display: inline-flex; align-items: center; font: 600 13px var(--sans); padding: 5px 12px;
     border-radius: 999px; background: var(--track); color: var(--secondary); white-space: nowrap; }
@@ -138,6 +145,8 @@
   tr.click { cursor: pointer; } tr.click:hover td { background: #fafbfc; }
   .table-card { padding: 0; overflow-x: auto; }
   .empty-row { padding: 48px 20px; text-align: center; color: var(--secondary); }
+  td.act { width: 1%; padding-top: 6px; padding-bottom: 6px; text-align: right; }
+  .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
   .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); z-index: 50; background: var(--ink);
     color: #fff; border-radius: 12px; padding: 12px 18px; font-size: 15px; max-width: calc(100% - 32px); }
   .toast.bad { background: var(--danger); }
@@ -256,6 +265,7 @@
   <symbol id="i-cadence" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="8"/><path d="M12 12l4-3"/></symbol>
   <symbol id="i-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></symbol>
   <symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></symbol>
+  <symbol id="i-trash" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></symbol>
   <symbol id="i-strava" viewBox="0 0 24 24" fill="currentColor"><path d="M9.8 2 4 13.3h3.4l2.4-4.6 2.3 4.6h3.4zM15.6 13.3l-1.7 3.3-1.7-3.3H9.6l4.3 8.7 4.3-8.7z"/></symbol>
 </svg>
 
@@ -368,7 +378,7 @@
   <main class="view" id="v-history" hidden>
     <div class="head"><div><h1>History</h1><p>Every ride is saved as a .fit file first; uploads come on top.</p></div></div>
     <div class="card table-card"><table>
-      <thead><tr><th>Date</th><th>Ride</th><th>Time</th><th>Distance</th><th class="hide-sm">NP</th><th class="hide-sm">TSS</th><th class="hide-sm">Uploaded</th></tr></thead>
+      <thead><tr><th>Date</th><th>Ride</th><th>Time</th><th>Distance</th><th class="hide-sm">NP</th><th class="hide-sm">TSS</th><th class="hide-sm">Uploaded</th><th><span class="sr-only">Delete</span></th></tr></thead>
       <tbody id="history-rows"></tbody></table></div>
   </main>
 
@@ -421,6 +431,7 @@
           <button class="btn strava" id="up-strava" type="button"><svg><use href="#i-strava"/></svg><span>Upload to Strava</span></button>
           <button class="btn" id="up-intervals" type="button"><span>Upload to intervals.icu</span></button>
           <a class="btn" id="save-fit" href="#" download>Save .fit</a>
+          <button class="btn danger" id="delete-ride" type="button"><svg><use href="#i-trash"/></svg>Delete</button>
         </div>
       </div>
       <div class="note" id="sum-note" hidden></div>
@@ -775,7 +786,7 @@ async function loadHistory() {
   const body = $("history-rows");
   try {
     const rides = await api("/api/rides");
-    if (!rides.length) { body.innerHTML = `<tr><td colspan="7" class="empty-row">No rides yet. Your first one will show up here.</td></tr>`; return; }
+    if (!rides.length) { body.innerHTML = `<tr><td colspan="8" class="empty-row">No rides yet. Your first one will show up here.</td></tr>`; return; }
     body.innerHTML = "";
     for (const r of rides) {
       const s = r.summary, tr = document.createElement("tr");
@@ -783,13 +794,30 @@ async function loadHistory() {
       const ups = Object.keys(r.uploads || {}).map((k) => (k === "strava" ? "Strava" : "intervals.icu")).join(", ");
       tr.innerHTML = `<td class="nowrap">${esc(when(r.started_at))}</td>
         <td>${esc(r.name)}${r.error ? ' <span class="pill wait">ended early</span>' : ""}</td><td class="nowrap">${clock(s.elapsed)}</td><td class="nowrap">${km(s.distance)} km</td>
-        <td class="hide-sm nowrap">${s.normalized_power} W</td><td class="hide-sm">${s.tss}</td><td class="hide-sm muted">${esc(ups) || "–"}</td>`;
+        <td class="hide-sm nowrap">${s.normalized_power} W</td><td class="hide-sm">${s.tss}</td><td class="hide-sm muted">${esc(ups) || "–"}</td>
+        <td class="act"><button class="icon-btn" type="button" title="Delete ride" aria-label="Delete ${esc(r.name)}"><svg><use href="#i-trash"/></svg></button></td>`;
       const open = async () => showSummary(await api(`/api/rides/${r.id}`));
       tr.addEventListener("click", open);
-      tr.addEventListener("keydown", (e) => { if (e.key === "Enter") open(); });
+      tr.addEventListener("keydown", (e) => { if (e.key === "Enter" && e.target === tr) open(); });
+      tr.querySelector(".icon-btn").addEventListener("click", (e) => { e.stopPropagation(); deleteRide(r); });
       body.appendChild(tr);
     }
-  } catch (e) { body.innerHTML = `<tr><td colspan="7" class="empty-row">${esc(e.message)}</td></tr>`; }
+  } catch (e) { body.innerHTML = `<tr><td colspan="8" class="empty-row">${esc(e.message)}</td></tr>`; }
+}
+
+// Deleting removes the local .fit and summary; copies already uploaded elsewhere stay there.
+async function deleteRide(ride) {
+  const uploaded = Object.keys(ride.uploads || {}).length > 0;
+  const question = `Delete "${ride.name}" from ${when(ride.started_at)}? Its .fit file is removed from this computer.` +
+    (uploaded ? " Copies already uploaded to Strava or intervals.icu are not affected." : "");
+  if (!confirm(question)) return false;
+  try {
+    await api(`/api/rides/${ride.id}`, { method: "DELETE" });
+    toast("Ride deleted.");
+    if (shownRide && shownRide.id === ride.id) { shownRide = null; $("summary").hidden = true; }
+    if (location.hash === "#history") showView(); else location.hash = "history";
+    return true;
+  } catch (e) { toast(e.message, true); return false; }
 }
 
 function fillSettings() {
@@ -1064,6 +1092,7 @@ $("sum-close").addEventListener("click", () => {
   if (shownRide) store.set("rullo.dismissed", shownRide.id);
   $("summary").hidden = true; showView();
 });
+$("delete-ride").addEventListener("click", () => { if (shownRide) deleteRide(shownRide); });
 $("up-strava").addEventListener("click", () => upload("strava"));
 $("up-intervals").addEventListener("click", () => upload("intervals"));
 
