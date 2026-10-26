@@ -26,11 +26,11 @@ G = 9.80665
 class RiderParams:
     """Rider plus bike parameters."""
 
-    mass: float = 80.0  # kg, rider + bike
+    mass_kg: float = 78.0  # kg, rider + bike
     crr: float = 0.004  # rolling resistance coefficient
     cda: float = 0.32  # drag area, m^2
     rho: float = 1.225  # air density, kg/m^3
-    drive_loss: float = 0.03  # fraction of power lost in the drivetrain
+    drive_loss: float = 0.02  # fraction of power lost in the drivetrain
 
 
 def speed_from_power(
@@ -44,9 +44,9 @@ def speed_from_power(
     theta = math.atan(grade / 100.0)
     p_wheel = max(power, 0.0) * (1.0 - params.drive_loss)
     v = max(v_prev, 0.0)
-    f_static = params.mass * G * (math.sin(theta) + params.crr * math.cos(theta))
+    f_static = params.mass_kg * G * (math.sin(theta) + params.crr * math.cos(theta))
     # Avoid the 1/v singularity at standstill: cap driving force from a low speed.
     f_drive = p_wheel / max(v, 0.5)
     f_drag = 0.5 * params.rho * params.cda * v * v
-    accel = (f_drive - f_static - f_drag) / params.mass
+    accel = (f_drive - f_static - f_drag) / params.mass_kg
     return max(v + accel * dt, 0.0)
