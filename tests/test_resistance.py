@@ -53,8 +53,8 @@ async def test_sim_scales_grade_and_rate_limits() -> None:
     await c.update(0.25, 9.0, 90)  # too soon
     await c.update(1.0, 8.05, 90)  # change below the threshold
     await c.update(2.0, 10.0, 90)
-    await c.update(3.0, 60.0, 90)  # clamped to the max trainer grade
-    assert dev.writes == [("grade", 4.0), ("grade", 5.0), ("grade", 20.0)]
+    await c.update(3.0, 60.0, 90)  # capped at the steepest pitch (15%)
+    assert dev.writes == [("grade", 4.0), ("grade", 5.0), ("grade", 15.0)]
 
 
 async def test_free_mode_never_writes() -> None:
@@ -111,3 +111,27 @@ async def test_free_ride_block_falls_back_to_grade() -> None:
 def test_erg_without_target_is_rejected() -> None:
     with pytest.raises(ValueError):
         ResistanceController(Recorder(), Mode.ERG, 250)
+
+
+def test_descents_are_softened_and_pitches_capped() -> None:
+    c = ResistanceController(
+        Recorder(),
+        Mode.SIM,
+        250,
+        settings=ResistanceSettings(difficulty=1.0, descent_scale=0.5, grade_cap=12.0),
+    )
+    assert c.trainer_grade(8.0) == 8.0
+    assert c.trainer_grade(-8.0) == -4.0
+    assert c.trainer_grade(18.0) == 12.0
+    assert c.trainer_grade(-40.0) == -12.0
+
+
+async def test_hold_eases_off_while_paused() -> None:
+    dev = Recorder()
+    erg = ResistanceController(dev, Mode.ERG, 300, target_power=280)
+    await erg.update(0.0, 0.0, 90)
+    await erg.hold()
+    assert dev.writes == [("power", 280), ("power", 120)]  # 40% of FTP
+    sim = ResistanceController(dev, Mode.SIM, 300)
+    await sim.hold()
+    assert dev.writes[-1] == ("grade", 0.0)

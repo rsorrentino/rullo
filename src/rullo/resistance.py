@@ -39,8 +39,9 @@ class ResistanceSettings:
     max_ramp_w_per_s: float = 50.0
     cadence_floor: int = 55  # rpm; below it ERG is released
     release_fraction: float = 0.5  # ERG target fraction while released
-    min_grade: float = -10.0
-    max_grade: float = 20.0
+    descent_scale: float = 0.5  # descents feel this fraction of the scaled grade
+    grade_cap: float = 15.0  # % the trainer never exceeds (either sign)
+    hold_fraction: float = 0.4  # ERG target fraction while paused
 
 
 class ResistanceController:
@@ -76,8 +77,22 @@ class ResistanceController:
         return self._fixed_target
 
     def trainer_grade(self, grade: float) -> float:
+        """Real grade -> what the trainer simulates: scaled, softer down, capped."""
         scaled = grade * self._s.difficulty
-        return max(self._s.min_grade, min(self._s.max_grade, round(scaled, 2)))
+        if scaled < 0:
+            scaled *= self._s.descent_scale
+        cap = self._s.grade_cap
+        return max(-cap, min(cap, round(scaled, 2)))
+
+    async def hold(self) -> None:
+        """Ease off while the ride is paused (one write; ``update`` resumes)."""
+        if self.mode is Mode.SIM:
+            await self._device.set_grade(0.0)
+            self._last_grade = 0.0
+        elif self.mode is Mode.ERG:
+            watts = round(self._ftp * self._s.hold_fraction)
+            await self._device.set_target_power(watts)
+            self._sent_target = float(watts)
 
     async def update(self, t: float, grade: float, cadence: int | None) -> None:
         if self.mode is Mode.SIM:
