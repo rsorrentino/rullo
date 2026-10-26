@@ -15,6 +15,7 @@ uv run pytest tests/test_physics.py::test_flat_steady_power_converges   # single
 uv run ruff check . && uv run ruff format .
 uv run mypy                               # strict mode; checks src and tests
 uv run rullo --duration 30 --grade 4      # ride against the simulated trainer
+uv run rullo --web --duration 600         # same, with the browser HUD on http://127.0.0.1:8765/
 ```
 
 CI (`.github/workflows/ci.yml`) runs exactly these checks with `uv sync --locked`, so commit `uv.lock` changes alongside `pyproject.toml` changes.
@@ -29,6 +30,8 @@ Everything flows through one normalised stream of `Telemetry` samples (`telemetr
 - **Physics** (`physics.py`): `speed_from_power(power, grade_percent, v_prev, params, dt)` is a pure, deterministic step function: gravity, rolling and aero resistance with semi-implicit Euler, and the driving force capped at low speed to avoid a 1/v singularity. `RiderParams` is frozen.
 - **Bus** (`bus.py`): `TelemetryBus` gives each subscriber its own unbounded `asyncio.Queue`, so `publish` is sync and never blocks. `subscribe()` registers eagerly, before iteration starts, so samples published right after the call are not lost.
 - **Loop** (`loop.py`): `run_loop` connects the device, sends it the grade and optional ERG target (the loop is the only writer of resistance commands), pulls raw samples, computes `speed` via physics using `dt` taken from successive `sample.t` values, integrates distance into `SessionState`, publishes *enriched* samples (with `speed` filled in) to the bus, and always disconnects in `finally`. `run` wraps it with a stdout HUD subscriber; `__main__.py` is the `rullo` CLI on top of `run`.
+
+- **Bridge** (`bridge.py`) and **web HUD** (`web/index.html`): the frontend is a separate client that only sees a local HTTP socket, so the core has no rendering imports. `serve()` runs `run_loop` and streams `config`, `sample` (telemetry plus distance) and `done` events as Server-Sent Events JSON. Every event is kept and replayed to each new connection, so reloads and late clients get the whole ride. The HUD is one self-contained HTML file with no external requests, so it works offline. A future Godot client would read the same stream.
 
 Devices emit raw samples without speed. Speed is only ever computed in the loop, so consumers read it from the bus.
 

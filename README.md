@@ -5,7 +5,8 @@ alternative to Zwift. Power from a smart trainer (or a simulated device) is
 turned into speed and distance by a deterministic physics model, all driven by
 one normalised telemetry stream.
 
-This repository contains the headless core only (no renderer, no Bluetooth yet).
+This repository contains the headless core plus a browser HUD that reads it over a
+local socket. There is no Bluetooth yet: rides run against a simulated trainer.
 
 ## Quickstart
 
@@ -20,6 +21,13 @@ Ride a session against the simulated trainer:
 uv run rullo --duration 30 --grade 4         # SIM mode on a 4% climb
 uv run rullo --mode erg --target 250         # ERG mode holding 250 W
 uv run rullo --help
+```
+
+Or watch it in the browser HUD (served locally, works offline):
+
+```sh
+uv run rullo --web --duration 600 --mode erg --target 250 --ftp 290
+# then open http://127.0.0.1:8765/
 ```
 
 ## License

@@ -17,3 +17,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   simulated trainer with a console HUD.
 - Injectable sleep on `SimulatedDevice` so tests run faster than real time.
 - CI running ruff, mypy and pytest; pre-commit hooks.
+- Browser Ride HUD (`rullo --web`): live power with zones, W/kg and %FTP, a
+  course/ERG card, an elevation strip, the metric dock and a ride summary,
+  streamed from the core by `rullo.bridge` over Server-Sent Events.
