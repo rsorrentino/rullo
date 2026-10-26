@@ -1,0 +1,15 @@
+<workout_file>
+    <author>Rullo</author>
+    <name>Over-Unders</name>
+    <description>Threshold 95/105% FTP alternations.</description>
+    <sportType>bike</sportType>
+    <workout>
+        <Warmup Duration="600" PowerLow="0.50" PowerHigh="0.75"/>
+        <IntervalsT Repeat="4" OnDuration="120" OffDuration="120" OnPower="1.05" OffPower="0.95"/>
+        <SteadyState Duration="300" Power="0.55"/>
+        <IntervalsT Repeat="4" OnDuration="120" OffDuration="120" OnPower="1.05" OffPower="0.95"/>
+        <SteadyState Duration="300" Power="0.55"/>
+        <IntervalsT Repeat="2" OnDuration="120" OffDuration="120" OnPower="1.05" OffPower="0.95"/>
+        <Cooldown Duration="300" PowerLow="0.60" PowerHigh="0.45"/>
+    </workout>
+</workout_file>

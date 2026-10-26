@@ -1,0 +1,141 @@
+# Rullo - offline indoor-cycling training app.
+# Copyright (C) 2026 The Rullo contributors
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+"""Structured workouts: Zwift ``.zwo`` parsing and ERG targets over time."""
+
+import xml.etree.ElementTree as ET
+from bisect import bisect_right
+from dataclasses import dataclass
+from pathlib import Path
+
+
+@dataclass(frozen=True)
+class Step:
+    """One block of a workout; power is a fraction of FTP, None for free ride."""
+
+    start: float  # s from workout start
+    duration: float  # s
+    power_low: float | None
+    power_high: float | None
+    label: str
+
+    def fraction_at(self, t: float) -> float | None:
+        if self.power_low is None or self.power_high is None:
+            return None
+        progress = min(max((t - self.start) / self.duration, 0.0), 1.0)
+        return self.power_low + (self.power_high - self.power_low) * progress
+
+
+@dataclass(frozen=True)
+class Workout:
+    name: str
+    description: str
+    steps: tuple[Step, ...]
+
+    @property
+    def duration(self) -> float:
+        last = self.steps[-1]
+        return last.start + last.duration
+
+    def step_index(self, t: float) -> int:
+        starts = [s.start for s in self.steps]
+        return max(0, min(bisect_right(starts, t) - 1, len(self.steps) - 1))
+
+    def target_at(self, t: float, ftp: int) -> int | None:
+        """ERG target in watts at ``t`` seconds, or None (free ride / finished)."""
+        if t < 0 or t >= self.duration:
+            return None
+        fraction = self.steps[self.step_index(t)].fraction_at(t)
+        return None if fraction is None else round(fraction * ftp)
+
+    def intensity_factor(self) -> float:
+        """Estimated IF: normalised power of the target trace over FTP."""
+        trace = [
+            self.steps[self.step_index(t)].fraction_at(t + 0.5) or 0.5
+            for t in range(int(self.duration))
+        ]
+        if len(trace) < 30:
+            return sum(trace) / max(len(trace), 1)
+        window = sum(trace[:30])
+        fourth = [(window / 30) ** 4]
+        for i in range(30, len(trace)):
+            window += trace[i] - trace[i - 30]
+            fourth.append((window / 30) ** 4)
+        return float((sum(fourth) / len(fourth)) ** 0.25)
+
+    def tss(self) -> float:
+        return self.duration / 3600.0 * self.intensity_factor() ** 2 * 100.0
+
+
+def _num(el: ET.Element, *names: str) -> float | None:
+    for name in names:
+        for key in (name, name.lower()):
+            if key in el.attrib:
+                return float(el.attrib[key])
+    return None
+
+
+def parse_zwo(text: str, fallback_name: str = "Workout") -> Workout:
+    """Parse a Zwift workout file. Power values are fractions of FTP."""
+    root = ET.fromstring(text)
+    container = root.find("workout")
+    if container is None:
+        raise ValueError("no <workout> element")
+    steps: list[Step] = []
+    t = 0.0
+
+    def add(
+        duration: float | None, low: float | None, high: float | None, label: str
+    ) -> None:
+        nonlocal t
+        if duration is None or duration <= 0:
+            raise ValueError(f"{label} step without a positive Duration")
+        steps.append(Step(t, duration, low, high, label))
+        t += duration
+
+    for el in container:
+        tag = el.tag
+        if tag == "SteadyState":
+            power = _num(el, "Power", "PowerLow")
+            add(_num(el, "Duration"), power, power, "Steady")
+        elif tag in ("Warmup", "Cooldown", "Ramp"):
+            add(_num(el, "Duration"), _num(el, "PowerLow"), _num(el, "PowerHigh"), tag)
+        elif tag == "IntervalsT":
+            repeat = int(_num(el, "Repeat") or 1)
+            on, off = _num(el, "OnPower"), _num(el, "OffPower")
+            for i in range(repeat):
+                add(_num(el, "OnDuration"), on, on, f"Interval {i + 1}/{repeat}")
+                add(_num(el, "OffDuration"), off, off, f"Recovery {i + 1}/{repeat}")
+        elif tag in ("FreeRide", "MaxEffort"):
+            add(_num(el, "Duration"), None, None, "Free ride")
+        # Text events and unknown tags carry no power target.
+    if not steps:
+        raise ValueError("workout has no steps")
+    name = (root.findtext("name") or "").strip() or fallback_name
+    description = (root.findtext("description") or "").strip()
+    return Workout(name, description, tuple(steps))
+
+
+def load_zwo(path: Path) -> Workout:
+    return parse_zwo(path.read_text(encoding="utf-8"), path.stem.replace("-", " "))
+
+
+def zone_of(fraction: float) -> int:
+    """Coggan power zone (1-7) for a fraction of FTP."""
+    for zone, upper in enumerate((0.55, 0.75, 0.90, 1.05, 1.20, 1.50), start=1):
+        if fraction < upper:
+            return zone
+    return 7
