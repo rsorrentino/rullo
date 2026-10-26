@@ -16,6 +16,8 @@
 
 """Tick loop: device telemetry -> bus, with distance integrated from speed."""
 
+import asyncio
+from collections.abc import AsyncIterator
 from dataclasses import dataclass
 
 from rullo.bus import TelemetryBus
@@ -39,6 +41,7 @@ async def run_loop(
     params: RiderParams | None = None,
     grade: float = 0.0,
     max_ticks: int | None = None,
+    duration_s: float | None = None,
 ) -> SessionState:
     """Pull telemetry, compute speed, publish enriched samples, integrate distance."""
     rider = params or RiderParams()
@@ -67,6 +70,43 @@ async def run_loop(
             ticks += 1
             if max_ticks is not None and ticks >= max_ticks:
                 break
+            if duration_s is not None and state.elapsed >= duration_s:
+                break
     finally:
         await device.disconnect()
     return state
+
+
+async def run(
+    device: Device,
+    params: RiderParams | None = None,
+    course_grade: float = 0.0,
+    duration_s: float = 60.0,
+) -> SessionState:
+    """Run a session against ``device``, printing a one-line HUD per tick."""
+    bus = TelemetryBus()
+    hud = bus.subscribe()
+    printer = asyncio.ensure_future(_print_hud(hud, course_grade))
+    await device.set_grade(course_grade)
+    try:
+        return await run_loop(
+            device, bus, params=params, grade=course_grade, duration_s=duration_s
+        )
+    finally:
+        printer.cancel()
+        await asyncio.gather(printer, return_exceptions=True)
+
+
+async def _print_hud(samples: AsyncIterator[Telemetry], course_grade: float) -> None:
+    distance_m = 0.0
+    prev_t: float | None = None
+    async for sample in samples:
+        dt = 0.0 if prev_t is None else sample.t - prev_t
+        prev_t = sample.t
+        distance_m += (sample.speed or 0.0) * dt
+        speed_kmh = (sample.speed or 0.0) * 3.6
+        print(
+            f"P:{sample.power or 0:>4}W  C:{sample.cadence or 0:>3}rpm  "
+            f"HR:{sample.heart_rate or 0:>3}bpm  V:{speed_kmh:5.1f}km/h  "
+            f"G:{course_grade:+.1f}%  D:{distance_m / 1000.0:6.3f}km"
+        )
