@@ -18,7 +18,7 @@
 
 import pytest
 
-from rullo.workout import parse_zwo, zone_of
+from rullo.workout import parse_erg, parse_zwo, to_zwo, zone_of
 
 ZWO = """<workout_file><name>Test Intervals</name><description>d</description>
 <workout>
@@ -79,3 +79,53 @@ def test_zones() -> None:
     assert [zone_of(f) for f in (0.5, 0.6, 0.8, 1.0, 1.1, 1.3, 2.0)] == list(
         range(1, 8)
     )
+
+
+ERG = """[COURSE HEADER]
+VERSION = 2
+UNITS = ENGLISH
+DESCRIPTION = Test ramp
+FILE NAME = Watts Test
+FTP = 200
+MINUTES WATTS
+[END COURSE HEADER]
+[COURSE DATA]
+0.00 100
+5.00 200
+5.00 300
+6.00 300
+[END COURSE DATA]
+"""
+
+
+def test_parse_erg_watts_and_mrc_percent() -> None:
+    w = parse_erg(ERG, ftp=250)
+    assert w.name == "Watts Test"
+    assert [(s.start, s.duration, s.power_low, s.power_high) for s in w.steps] == [
+        (0.0, 300.0, 0.5, 1.0),
+        (300.0, 60.0, 1.5, 1.5),
+    ]  # file FTP 200 wins
+    mrc = ERG.replace("MINUTES WATTS", "MINUTES PERCENT").replace("FTP = 200\n", "")
+    m = parse_erg(
+        mrc.replace(" 100", " 50").replace(" 200", " 75").replace(" 300", " 110"), 250
+    )
+    assert [s.power_low for s in m.steps] == [0.5, 1.1]
+    with pytest.raises(ValueError):
+        parse_erg("[COURSE HEADER]\n[COURSE DATA]\n0 1\n1 1\n", 250)
+
+
+def test_zwo_round_trip() -> None:
+    original = parse_zwo(ZWO)
+    again = parse_zwo(to_zwo(original))
+    assert again.name == original.name
+    assert [(s.start, s.duration, s.power_low, s.power_high) for s in again.steps] == [
+        (s.start, s.duration, s.power_low, s.power_high) for s in original.steps
+    ]
+
+
+def test_ramp_test_tag() -> None:
+    zwo = (
+        "<workout_file><tags><tag name='RAMP_TEST'/></tags><workout>"
+        "<SteadyState Duration='60' Power='0.5'/></workout></workout_file>"
+    )
+    assert parse_zwo(zwo).ramp_test and not parse_zwo(ZWO).ramp_test

@@ -44,6 +44,7 @@ class Workout:
     name: str
     description: str
     steps: tuple[Step, ...]
+    ramp_test: bool = False  # an FTP ramp test: ends when the rider fails
 
     @property
     def duration(self) -> float:
@@ -126,7 +127,87 @@ def parse_zwo(text: str, fallback_name: str = "Workout") -> Workout:
         raise ValueError("workout has no steps")
     name = (root.findtext("name") or "").strip() or fallback_name
     description = (root.findtext("description") or "").strip()
-    return Workout(name, description, tuple(steps))
+    tags = {(t.get("name") or "").strip().upper() for t in root.iter("tag")}
+    return Workout(name, description, tuple(steps), ramp_test="RAMP_TEST" in tags)
+
+
+def to_zwo(workout: Workout) -> str:
+    """Serialise a workout as .zwo text (used to store imported .erg/.mrc files)."""
+    blocks = []
+    for s in workout.steps:
+        if s.power_low is None or s.power_high is None:
+            blocks.append(f'<FreeRide Duration="{s.duration:g}"/>')
+        elif s.power_low == s.power_high:
+            blocks.append(
+                f'<SteadyState Duration="{s.duration:g}" Power="{s.power_low:.4f}"/>'
+            )
+        else:
+            blocks.append(
+                f'<Ramp Duration="{s.duration:g}" PowerLow="{s.power_low:.4f}" '
+                f'PowerHigh="{s.power_high:.4f}"/>'
+            )
+    root = ET.Element("workout_file")
+    ET.SubElement(root, "name").text = workout.name
+    ET.SubElement(root, "description").text = workout.description
+    ET.SubElement(root, "sportType").text = "bike"
+    body = "\n    ".join(blocks)
+    head = ET.tostring(root, encoding="unicode").removesuffix("</workout_file>")
+    return f"{head}<workout>\n    {body}\n</workout></workout_file>\n"
+
+
+def parse_erg(text: str, ftp: int, fallback_name: str = "Workout") -> Workout:
+    """Parse an .erg (absolute watts) or .mrc (percent of FTP) workout.
+
+    Both list (minutes, value) points of a piecewise-linear target; two points
+    at the same time make a step. ``ftp`` converts .erg watts to FTP fractions
+    unless the file declares its own ``FTP =``.
+    """
+    header: dict[str, str] = {}
+    points: list[tuple[float, float]] = []
+    section = ""
+    unit = ""
+    for raw in text.splitlines():
+        line = raw.strip()
+        if not line or line.startswith(";"):
+            continue
+        if line.startswith("["):
+            section = line.upper()
+            continue
+        if section == "[COURSE HEADER]":
+            if "=" in line:
+                key, _, value = line.partition("=")
+                header[key.strip().upper()] = value.strip()
+            else:
+                unit = line.upper()
+        elif section == "[COURSE DATA]":
+            fields = line.split()
+            if len(fields) >= 2:
+                points.append((float(fields[0]) * 60.0, float(fields[1])))
+    if "PERCENT" in unit:
+        scale = 0.01
+    elif "WATTS" in unit:
+        base = float(header.get("FTP") or ftp)
+        if base <= 0:
+            raise ValueError("an .erg workout needs an FTP to convert watts")
+        scale = 1.0 / base
+    else:
+        raise ValueError("expected a MINUTES WATTS or MINUTES PERCENT header")
+    steps: list[Step] = []
+    for (t0, v0), (t1, v1) in zip(points, points[1:], strict=False):
+        if t1 > t0:
+            steps.append(
+                Step(
+                    t0,
+                    t1 - t0,
+                    v0 * scale,
+                    v1 * scale,
+                    "Steady" if v0 == v1 else "Ramp",
+                )
+            )
+    if not steps:
+        raise ValueError("workout has no steps")
+    name = header.get("FILE NAME") or header.get("DESCRIPTION") or fallback_name
+    return Workout(name.strip(), header.get("DESCRIPTION", "").strip(), tuple(steps))
 
 
 def load_zwo(path: Path) -> Workout:
