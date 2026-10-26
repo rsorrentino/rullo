@@ -59,6 +59,7 @@ _RIDE_URL = re.compile(r"^/api/rides/([0-9TZ]+)(/fit|/upload/(strava|intervals))
 class RideRequest:
     trainer: str = "sim"  # "sim" or a Bluetooth address
     heart_rate: str | None = None  # Bluetooth address of an HR strap
+    cadence: str | None = None  # Bluetooth address of a cadence sensor
     route: str | None = None
     workout: str | None = None
     mode: Mode = Mode.SIM
@@ -87,6 +88,7 @@ class RideRequest:
         return cls(
             trainer=str(raw.get("trainer") or "sim"),
             heart_rate=raw.get("heart_rate") or None,
+            cadence=raw.get("cadence") or None,
             route=route,
             workout=workout,
             mode=mode,
@@ -104,9 +106,14 @@ def default_device(req: RideRequest, settings: Settings) -> Device:
         return SimulatedDevice(
             mode=req.mode, rider_power=settings.sim_power, seed=secrets.randbits(32)
         )
-    from rullo.devices.ble import FtmsBleDevice
+    from rullo.devices.ble import BleTrainer
 
-    return FtmsBleDevice(req.trainer, hr_address=req.heart_rate)
+    return BleTrainer(
+        req.trainer,
+        hr_address=req.heart_rate,
+        cadence_address=req.cadence,
+        mass_kg=settings.mass_kg,
+    )
 
 
 async def default_scan() -> list[Any]:
@@ -478,7 +485,7 @@ class App:
                             "id": found.address,
                             "name": found.name,
                             "kind": found.kind,
-                            "detail": found.address,
+                            "detail": f"{found.detail} · {found.address}",
                             "rssi": found.rssi,
                         }
                     )

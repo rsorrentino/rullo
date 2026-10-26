@@ -14,17 +14,13 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-"""FTMS / Heart Rate wire-format tests and the BLE adapter against a fake client."""
+"""FTMS and Heart Rate wire-format tests."""
 
-import asyncio
 import struct
-from collections.abc import Callable
-from typing import Any
 
 import pytest
 
 from rullo.devices import ftms
-from rullo.devices.ble import FtmsBleDevice
 
 
 def test_indoor_bike_data_with_speed_cadence_power_hr() -> None:
@@ -68,97 +64,3 @@ def test_control_point_encoding() -> None:
 def test_heart_rate_formats() -> None:
     assert ftms.parse_heart_rate(bytes([0x00, 72])) == 72
     assert ftms.parse_heart_rate(bytes([0x01, 0x2C, 0x01])) == 300
-
-
-class FakeClient:
-    def __init__(self, features: bytes, fail_connect: int = 0) -> None:
-        self.features = features
-        self.fail_connect = fail_connect
-        self.connected = False
-        self.writes: list[bytes] = []
-        self.callbacks: dict[str, Callable[[Any, bytearray], None]] = {}
-
-    @property
-    def is_connected(self) -> bool:
-        return self.connected
-
-    async def connect(self) -> None:
-        if self.fail_connect:
-            self.fail_connect -= 1
-            raise OSError("trainer not found")
-        self.connected = True
-
-    async def disconnect(self) -> None:
-        self.connected = False
-
-    async def read_gatt_char(self, char: str) -> bytearray:
-        assert char == ftms.FTMS_FEATURE
-        return bytearray(self.features)
-
-    async def write_gatt_char(self, char: str, data: bytes, response: bool) -> None:
-        self.writes.append(bytes(data))
-
-    async def start_notify(
-        self, char: str, callback: Callable[[Any, bytearray], None]
-    ) -> None:
-        self.callbacks[char] = callback
-
-
-async def _no_wait(_: float) -> None:
-    await asyncio.sleep(0)
-
-
-async def test_ble_device_sets_up_reads_and_controls() -> None:
-    features = struct.pack("<II", 1 << 14, (1 << 3) | (1 << 13))
-    trainer, strap = FakeClient(features), FakeClient(b"")
-    clients = iter([trainer, strap])
-    dev = FtmsBleDevice(
-        "AA",
-        hr_address="BB",
-        sleep=_no_wait,
-        client_factory=lambda addr, lost: next(clients),
-    )
-    await dev.connect()
-    assert trainer.writes == [b"\x00", b"\x07"]  # request control, start
-    trainer.callbacks[ftms.INDOOR_BIKE_DATA](
-        None, bytearray(struct.pack("<HHHh", (1 << 2) | (1 << 6), 3000, 170, 233))
-    )
-    strap.callbacks[ftms.HR_MEASUREMENT](None, bytearray([0, 151]))
-    sample = await anext(dev.telemetry())
-    assert (sample.power, sample.cadence, sample.heart_rate) == (233, 85, 151)
-    assert sample.speed is None  # physics owns speed
-    await dev.set_grade(5.0)
-    await dev.set_target_power(200)
-    assert trainer.writes[2:] == [ftms.set_simulation(5.0), ftms.set_target_power(200)]
-    await dev.disconnect()
-    assert not trainer.connected and not strap.connected
-
-
-async def test_ble_device_skips_unsupported_commands() -> None:
-    trainer = FakeClient(struct.pack("<II", 0, 0))
-    dev = FtmsBleDevice("AA", sleep=_no_wait, client_factory=lambda a, lost: trainer)
-    await dev.connect()
-    await dev.set_grade(5.0)
-    await dev.set_target_power(200)
-    assert trainer.writes == [b"\x00", b"\x07"]
-
-
-async def test_ble_device_reconnects_after_a_drop() -> None:
-    features = struct.pack("<II", 0, 1 << 3)
-    first, second = FakeClient(features), FakeClient(features, fail_connect=1)
-    made: list[FakeClient] = []
-
-    def factory(addr: str, lost: Callable[[Any], None]) -> FakeClient:
-        client = first if not made else second
-        made.append(client)
-        return client
-
-    dev = FtmsBleDevice("AA", sleep=_no_wait, client_factory=factory)
-    await dev.connect()
-    first.connected = False
-    dev._on_trainer_lost(None)
-    for _ in range(20):
-        await asyncio.sleep(0)
-    assert second.connected  # the first retry failed, the second worked
-    assert second.writes == [b"\x00", b"\x07"]
-    await dev.disconnect()

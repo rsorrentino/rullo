@@ -241,7 +241,7 @@
   <main class="view" id="v-ride" hidden>
     <div class="head">
       <div><h1>Pair your sensors</h1>
-        <p class="muted small">Rullo talks to trainers and heart-rate straps over Bluetooth. Everything runs locally — no account needed.</p></div>
+        <p class="muted small">Rullo talks to FTMS and Wahoo trainers, heart-rate straps and cadence sensors over Bluetooth. Everything runs locally — no account needed.</p></div>
       <div class="seg" role="group" aria-label="Connection">
         <button class="on" type="button">Bluetooth</button>
         <button type="button" disabled title="ANT+ is planned for a later release">ANT+</button>
@@ -256,9 +256,10 @@
       </div>
       <div class="card row">
         <div class="icon" style="color:var(--cadence)"><svg><use href="#i-bolt"/></svg></div>
-        <div class="grow"><div style="font-weight:600">Power &amp; cadence</div>
-          <div class="faint small" id="power-src">From the trainer</div></div>
-        <span class="pill ok"><span class="dot"></span>From trainer</span>
+        <div class="grow"><div style="font-weight:600">Cadence</div>
+          <select id="cad-sel" aria-label="Cadence sensor" style="margin-top:8px;max-width:420px"></select>
+          <div class="faint small" id="power-src" style="margin-top:6px"></div></div>
+        <span class="pill" id="cad-state"><span class="dot"></span>Optional</span>
       </div>
       <div class="card row">
         <div class="icon" style="color:var(--hr)"><svg><use href="#i-heart"/></svg></div>
@@ -584,7 +585,7 @@ const choice = {
   route: store.get("rullo.route") || "alpine-loop",
   workout: store.get("rullo.workout") || "",
   mode: store.get("rullo.mode") || "sim",
-  trainer: "sim", hr: "",
+  trainer: "sim", hr: "", cadence: "",
 };
 function remember() {
   store.set("rullo.route", choice.route); store.set("rullo.workout", choice.workout || null);
@@ -616,9 +617,17 @@ function renderDevices() {
   $("hr").innerHTML = `<option value="">None</option>` + straps.map((d) => `<option value="${esc(d.id)}">${esc(d.name)} — ${esc(d.detail)}</option>`).join("");
   $("hr").value = straps.some((d) => d.id === choice.hr) ? choice.hr : "";
   choice.hr = $("hr").value;
+  const cads = devices.filter((d) => d.kind === "cadence");
+  $("cad-sel").innerHTML = `<option value="">From the trainer, if it reports cadence</option>` + cads.map((d) => `<option value="${esc(d.id)}">${esc(d.name)} — ${esc(d.detail)}</option>`).join("");
+  $("cad-sel").value = cads.some((d) => d.id === choice.cadence) ? choice.cadence : "";
+  choice.cadence = $("cad-sel").value;
   const sim = choice.trainer === "sim";
-  $("trainer-tag").textContent = sim ? "Simulated" : "FTMS · controllable";
-  $("power-src").textContent = sim ? "Simulated rider" : "From the trainer's FTMS data";
+  const trainer = devices.find((d) => d.id === choice.trainer);
+  $("trainer-tag").textContent = sim ? "Simulated" : trainer && trainer.detail.startsWith("Wahoo") ? "Wahoo · controllable" : "FTMS · controllable";
+  $("power-src").textContent = sim ? "Power and cadence come from the simulated rider."
+    : "Power comes from the trainer. Wahoo KICKR SNAP trainers do not report cadence; pair a cadence sensor for it.";
+  $("cad-state").className = choice.cadence ? "pill ok" : "pill";
+  $("cad-state").innerHTML = `<span class="dot"></span>${choice.cadence ? "Selected" : sim ? "Simulated" : "Optional"}`;
   $("hr-state").className = choice.hr ? "pill ok" : "pill";
   $("hr-state").innerHTML = `<span class="dot"></span>${choice.hr ? "Selected" : sim ? "Simulated" : "Optional"}`;
 }
@@ -962,6 +971,7 @@ function connectEvents() {
 // ---------- wiring ----------
 $("trainer").addEventListener("change", (e) => { choice.trainer = e.target.value; renderDevices(); });
 $("hr").addEventListener("change", (e) => { choice.hr = e.target.value; renderDevices(); });
+$("cad-sel").addEventListener("change", (e) => { choice.cadence = e.target.value; renderDevices(); });
 $("route-sel").addEventListener("change", (e) => { choice.route = e.target.value; remember(); renderSession(); });
 $("workout-sel").addEventListener("change", (e) => { choice.workout = e.target.value; remember(); renderSession(); });
 $("mode-sel").addEventListener("change", (e) => { choice.mode = e.target.value; remember(); renderSession(); });
@@ -974,7 +984,7 @@ $("scan").addEventListener("click", async () => {
     const result = await api("/api/devices?scan=1");
     devices = result.devices;
     const found = devices.length - 1;
-    $("scan-note").textContent = result.error || (found ? `Found ${found} device${found > 1 ? "s" : ""}.` : "No trainers or straps found. Wake the trainer by pedalling and try again.");
+    $("scan-note").textContent = result.error || (found ? `Found ${found} device${found > 1 ? "s" : ""}.` : "Nothing found. Wake the trainer by pedalling, close other apps connected to it, and try again.");
     renderDevices();
   } catch (e) { $("scan-note").textContent = e.message; }
   b.disabled = false; b.textContent = "Scan again";
@@ -986,7 +996,8 @@ $("start").addEventListener("click", async () => {
   const minutes = Number($("duration").value);
   try {
     await api("/api/ride/start", { method: "POST", json: {
-      trainer: choice.trainer, heart_rate: choice.hr || null, route: choice.route || null,
+      trainer: choice.trainer, heart_rate: choice.hr || null, cadence: choice.cadence || null,
+      route: choice.route || null,
       workout: choice.workout || null, mode: choice.workout ? "erg" : choice.mode,
       target_power: choice.mode === "erg" && !choice.workout ? Number($("target").value) : null,
       duration_s: !choice.workout && minutes > 0 ? minutes * 60 : null,
