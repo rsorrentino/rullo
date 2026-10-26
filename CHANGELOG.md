@@ -26,6 +26,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   characteristic. Protocol detected on connect.
 - Bluetooth cadence sensors (CSC), and the last resistance command re-applied
   after a reconnect.
+- ANT+ over a USB stick (via `openant`): FE-C trainers with grade, target power
+  and rider weight; power meters (read only); heart-rate straps; cadence
+  sensors. The pairing screen scans either radio.
+- Logo and favicon; a consistent layout across pages, with a top bar under
+  1024 px and the summary inside the content area.
+- CONTRIBUTING, CODE_OF_CONDUCT, SECURITY, and issue and pull request templates.
 - Course model with GPX import; three synthetic demo routes.
 - `.zwo` workouts in ERG mode; six bundled workouts.
 - Resistance controller: difficulty scaling, rate limiting, ERG ramp clamp and

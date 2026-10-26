@@ -1,8 +1,8 @@
 # Rullo
 
 Rullo is a solo, offline indoor-cycling training app for Linux and an open
-alternative to Zwift. It controls a Bluetooth smart trainer, either a standard FTMS trainer or a
-Wahoo KICKR on older firmware (or a simulated one), turns your power into speed with a deterministic physics model over a real
+alternative to Zwift. It controls a smart trainer over Bluetooth (FTMS, or Wahoo KICKR on older
+firmware) or ANT+ FE-C (or a simulated one), turns your power into speed with a deterministic physics model over a real
 elevation profile, and records every ride to a `.fit` file you can upload to
 Strava or intervals.icu.
 
@@ -15,8 +15,8 @@ uv run rullo            # opens the app at http://127.0.0.1:8765/
 
 In the app:
 
-1. **Ride**: pick the simulated trainer, or press *Scan for Bluetooth devices*
-   to find a trainer and an optional heart-rate strap and cadence sensor.
+1. **Ride**: pick the simulated trainer, or choose *Bluetooth* or *ANT+* and
+   scan to find a trainer and an optional heart-rate strap and cadence sensor.
 2. **Routes / Workouts**: choose a route (three demo routes are bundled; import
    your own GPX) and optionally a structured workout (`.zwo`, ERG mode).
 3. **Start ride**: the HUD shows power with zones, the workout or course card,
@@ -69,6 +69,25 @@ otherwise Wahoo's own control commands (for example a KICKR SNAP on firmware
 not publish them. The KICKR SNAP does not report cadence, so pair a Bluetooth
 cadence sensor if you want it.
 
+### ANT+
+
+ANT+ needs a USB stick (for example a Garmin/Dynastream ANT USB-m). Rullo
+supports FE-C trainers (resistance control), ANT+ power meters (power only),
+heart-rate straps and cadence sensors, all on the same stick. A ride uses one
+radio: pair the trainer and its sensors all over Bluetooth or all over ANT+.
+
+On Linux, give your user access to the stick once:
+
+```sh
+echo 'SUBSYSTEM=="usb", ATTRS{idVendor}=="0fcf", ATTRS{idProduct}=="1004|1008|1009", TAG+="uaccess"' \
+  | sudo tee /etc/udev/rules.d/42-ant-usb-sticks.rules
+sudo udevadm control --reload-rules && sudo udevadm trigger
+```
+
+Then unplug and replug the stick.
+
+### Troubleshooting
+
 If the scan does not find your trainer, make sure it is not connected in your
 system Bluetooth settings or in another app (Wahoo, Zwift). A connected trainer
 stops advertising.
@@ -77,8 +96,15 @@ stops advertising.
 
 Tested with a real KICKR SNAP (firmware 2.3.63) for scanning, connecting and
 reading power. Resistance commands are covered by tests, but have not yet been
-checked by riding a real trainer. ANT+, a 3D world and Flatpak packaging are
-not built yet.
+checked by riding a real trainer. ANT+ is covered by tests against a fake USB
+stick only, not yet tried on real hardware. A 3D world and Flatpak packaging
+are not built yet.
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md). Trainer compatibility reports are
+especially welcome. Please follow the [Code of Conduct](CODE_OF_CONDUCT.md),
+and report security issues as described in [SECURITY.md](SECURITY.md).
 
 ## License
 
