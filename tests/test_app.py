@@ -289,10 +289,28 @@ async def test_bad_ride_requests(running: tuple[App, Client]) -> None:
 
 
 async def test_devices_report_scan_errors(tmp_path: Path) -> None:
-    async def broken_scan() -> list[Any]:
-        raise OSError("No Bluetooth adapters found.")
+    async def broken_scan(radio: str) -> list[Any]:
+        raise OSError(
+            "No Bluetooth adapters found." if radio == "bluetooth" else "No stick"
+        )
 
     app = App(Library(tmp_path), Settings(), tmp_path / "s.json", scanner=broken_scan)
     result = await app._devices(scan=True)
     assert result["devices"][0]["id"] == "sim"
-    assert "No Bluetooth adapters" in result["error"]
+    assert result["error"] == "Bluetooth scan failed: No Bluetooth adapters found."
+    result = await app._devices(scan=True, radio="ant")
+    assert result["error"] == "ANT+ scan failed: No stick"
+
+
+async def test_radios_cannot_be_mixed(running: tuple[App, Client]) -> None:
+    _, client = running
+    cases = [
+        {"trainer": "C2:AF:AB:5E:07:46", "heart_rate": "ant:120:1"},
+        {"trainer": "ant:17:1", "cadence": "AA:BB:CC:DD:EE:FF"},
+        {"trainer": "sim", "heart_rate": "ant:120:1"},
+    ]
+    for body in cases:
+        status, _, payload = await client.request("POST", "/api/ride/start", body)
+        assert status == 400, body
+    status, _, _ = await client.request("GET", "/api/devices?radio=wifi")
+    assert status == 400

@@ -79,6 +79,20 @@ class RideRequest:
             raise HttpError(400, f"unknown route {route!r}")
         if workout is not None and workout not in library.workouts():
             raise HttpError(400, f"unknown workout {workout!r}")
+        trainer = str(raw.get("trainer") or "sim")
+        sensors = [s for s in (raw.get("heart_rate"), raw.get("cadence")) if s]
+        if trainer != "sim" and sensors:
+            trainer_ant = trainer.startswith("ant:")
+            if any(str(s).startswith("ant:") != trainer_ant for s in sensors):
+                raise HttpError(
+                    400,
+                    "pair the trainer and sensors on the same radio "
+                    "(all Bluetooth or all ANT+)",
+                )
+        if trainer == "sim" and sensors:
+            raise HttpError(
+                400, "sensors cannot be combined with the simulated trainer"
+            )
         target = raw.get("target_power")
         duration = raw.get("duration_s")
         if workout is not None:
@@ -98,13 +112,22 @@ class RideRequest:
 
 
 DeviceFactory = Callable[[RideRequest, Settings], Device]
-Scanner = Callable[[], Awaitable[list[Any]]]
+Scanner = Callable[[str], Awaitable[list[Any]]]  # radio: "bluetooth" or "ant"
 
 
 def default_device(req: RideRequest, settings: Settings) -> Device:
     if req.trainer == "sim":
         return SimulatedDevice(
             mode=req.mode, rider_power=settings.sim_power, seed=secrets.randbits(32)
+        )
+    from rullo.devices.ant import AntTrainer, is_ant
+
+    if is_ant(req.trainer):
+        return AntTrainer(
+            req.trainer,
+            hr=req.heart_rate,
+            cadence=req.cadence,
+            mass_kg=settings.mass_kg,
         )
     from rullo.devices.ble import BleTrainer
 
@@ -116,7 +139,11 @@ def default_device(req: RideRequest, settings: Settings) -> Device:
     )
 
 
-async def default_scan() -> list[Any]:
+async def default_scan(radio: str = "bluetooth") -> list[Any]:
+    if radio == "ant":
+        from rullo.devices.ant import scan as ant_scan
+
+        return list(await ant_scan())
     from rullo.devices.ble import scan
 
     return list(await scan())
@@ -376,6 +403,9 @@ class App:
         if path == "/" and method == "GET":
             page = (files("rullo") / "web" / "index.html").read_bytes()
             return Response(200, page, "text/html; charset=utf-8")
+        if path in ("/logo.svg", "/favicon.svg", "/favicon.ico") and method == "GET":
+            logo = (files("rullo") / "web" / "logo.svg").read_bytes()
+            return Response(200, logo, "image/svg+xml")
         if path == "/events" and method == "GET":
             return Stream(self.hub.stream())
         if path == "/api/library" and method == "GET":
@@ -411,7 +441,12 @@ class App:
                 self.settings.save(self._settings_path)
             return json_response(self.settings.public())
         if path == "/api/devices" and method == "GET":
-            return json_response(await self._devices(req.query.get("scan") == "1"))
+            radio = req.query.get("radio", "bluetooth")
+            if radio not in ("bluetooth", "ant"):
+                raise HttpError(400, f"unknown radio {radio!r}")
+            return json_response(
+                await self._devices(req.query.get("scan") == "1", radio)
+            )
         if path == "/api/ride/start" and method == "POST":
             ride_id = self.start_ride(RideRequest.parse(req.json(), self.library))
             return json_response({"id": ride_id})
@@ -466,7 +501,7 @@ class App:
             raise HttpError(404, f"no ride {ride_id}") from exc
         raise HttpError(405, "method not allowed")
 
-    async def _devices(self, scan: bool) -> dict[str, Any]:
+    async def _devices(self, scan: bool, radio: str = "bluetooth") -> dict[str, Any]:
         devices: list[dict[str, Any]] = [
             {
                 "id": "sim",
@@ -479,7 +514,7 @@ class App:
         error = None
         if scan:
             try:
-                for found in await self._scanner():
+                for found in await self._scanner(radio):
                     devices.append(
                         {
                             "id": found.address,
@@ -492,8 +527,9 @@ class App:
             except Exception as exc:  # no adapter, BlueZ down, permissions...
                 first = exc.args[0] if exc.args else None
                 reason = first if isinstance(first, str) else exc
-                logger.warning("Bluetooth scan failed: %s", reason)
-                error = f"Bluetooth scan failed: {reason}"
+                label = "ANT+" if radio == "ant" else "Bluetooth"
+                logger.warning("%s scan failed: %s", label, reason)
+                error = f"{label} scan failed: {reason}"
         return {"devices": devices, "error": error}
 
     def _strava_connect(self, req: Request) -> Response:
