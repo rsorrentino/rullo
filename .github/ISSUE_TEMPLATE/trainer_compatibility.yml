@@ -1,0 +1,37 @@
+name: Trainer compatibility
+description: Report how Rullo works with your trainer or sensor
+labels: [hardware]
+body:
+  - type: input
+    id: model
+    attributes:
+      label: Trainer or sensor model
+      placeholder: "Wahoo KICKR SNAP"
+    validations:
+      required: true
+  - type: input
+    id: firmware
+    attributes:
+      label: Firmware version
+  - type: dropdown
+    id: radio
+    attributes:
+      label: Radio
+      options: [Bluetooth, ANT+]
+    validations:
+      required: true
+  - type: checkboxes
+    id: works
+    attributes:
+      label: What works
+      options:
+        - label: Found by the scan
+        - label: Power readings
+        - label: Cadence readings
+        - label: SIM mode (gradient changes resistance)
+        - label: ERG mode (holds target power)
+  - type: textarea
+    id: notes
+    attributes:
+      label: Notes and log output
+      render: text

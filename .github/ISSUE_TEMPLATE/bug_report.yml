@@ -1,0 +1,39 @@
+name: Bug report
+description: Something does not work as expected
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you did, what you expected, and what happened instead.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open the app with `uv run rullo`
+        2. ...
+  - type: input
+    id: version
+    attributes:
+      label: Rullo version or commit
+      placeholder: "0.1.0 or a commit hash"
+  - type: input
+    id: system
+    attributes:
+      label: Linux distribution and browser
+      placeholder: "Ubuntu 24.04, Firefox 131"
+  - type: input
+    id: trainer
+    attributes:
+      label: Trainer and sensors, if relevant
+      placeholder: "KICKR SNAP (firmware 2.3.63) over Bluetooth"
+  - type: textarea
+    id: logs
+    attributes:
+      label: Log output
+      description: The terminal output of `uv run rullo` around the problem.
+      render: text
