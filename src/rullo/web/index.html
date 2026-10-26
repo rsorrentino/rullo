@@ -1,0 +1,424 @@
+<!doctype html>
+<!-- Rullo - offline indoor-cycling training app. SPDX-License-Identifier: GPL-3.0-or-later -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rullo</title>
+<link rel="icon" href="data:,">
+<style>
+  :root {
+    --ground: #0b0f14; --surface: #141a22; --elevated: #171e27;
+    --hairline: rgba(255, 255, 255, 0.08);
+    --ink: #f2f5f8; --muted: #9aa4b2; --faint: #6b7684;
+    --power: #ff7a1a; --hr: #ff5252; --cadence: #2dd4bf; --speed: #4c9aff;
+    --success: #34d399; --distance: #a78bfa;
+    --z1: #6b7684; --z2: #4c9aff; --z3: #34d399; --z4: #facc15;
+    --z5: #ff7a1a; --z6: #ff5252; --z7: #a78bfa;
+    --panel: rgba(11, 15, 20, 0.72);
+    --sans: "Barlow", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --condensed: "Barlow Condensed", "Barlow", system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; }
+  html, body { height: 100%; }
+  body {
+    background: var(--ground); color: var(--ink); font: 400 16px/1.5 var(--sans);
+    overflow: hidden; font-variant-numeric: tabular-nums;
+  }
+  #world { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+  .hud { position: fixed; inset: 0; padding: 24px; display: grid;
+    grid-template-rows: auto 1fr auto auto; grid-template-columns: minmax(0, 1fr); gap: 16px; pointer-events: none; }
+  .hud > * { pointer-events: auto; }
+  .panel { background: var(--panel); backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px); border: 1px solid var(--hairline);
+    border-radius: 14px; padding: 14px 18px; }
+  .label { font: 600 11px/1 var(--sans); letter-spacing: 0.14em;
+    text-transform: uppercase; color: var(--muted); }
+  .dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%;
+    margin-right: 6px; vertical-align: 1px; }
+  .num { font-family: var(--condensed); font-weight: 700; line-height: 1; }
+  .unit { color: var(--muted); font-size: 14px; margin-left: 4px; font-weight: 400; }
+
+  .top { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; }
+  #elapsed { font-size: 40px; margin-top: 6px; }
+  .sub { color: var(--muted); font-size: 13px; margin-top: 4px; }
+  .sub .dot { background: var(--power); }
+  #status { align-self: center; font-size: 12px; color: var(--muted);
+    padding: 6px 12px; border-radius: 999px; background: var(--panel);
+    border: 1px solid var(--hairline); }
+  #status.live .dot { background: var(--success); }
+  #status.off .dot { background: var(--z4); }
+  .card { width: min(320px, 100%); }
+  .card-head { display: flex; justify-content: space-between; align-items: baseline; }
+  #card-note { font-size: 12px; color: var(--ink); font-weight: 600; }
+  #card-title { font-weight: 600; font-size: 18px; margin: 4px 0 2px; }
+  .card-row { display: flex; justify-content: space-between; align-items: baseline; }
+  #card-value { font-size: 34px; color: var(--power); }
+  #card-time { font-size: 26px; }
+  .bar { height: 6px; border-radius: 999px; background: var(--elevated);
+    margin-top: 10px; overflow: hidden; }
+  .bar > i { display: block; height: 100%; width: 0; background: var(--power);
+    border-radius: inherit; transition: width 0.25s linear; }
+
+  .power { align-self: end; }
+  #power { font-size: clamp(96px, 16vw, 168px); color: var(--power); }
+  #power .unit { font-size: 28px; }
+  .zone-row { display: flex; align-items: center; gap: 12px; margin-top: 8px;
+    color: var(--muted); font-size: 13px; }
+  #zone { font-weight: 600; font-size: 12px; letter-spacing: 0.06em; color: var(--ink);
+    padding: 3px 10px; border-radius: 999px; border: 1px solid var(--z1);
+    background: rgba(255, 255, 255, 0.04); }
+  .zones { display: flex; gap: 4px; margin-top: 12px; }
+  .zones i { width: 28px; height: 5px; border-radius: 999px; background: var(--elevated); }
+
+  .elev-head { display: flex; justify-content: space-between; align-items: center; }
+  #grade { font-family: var(--condensed); font-weight: 700; font-size: 22px; color: var(--power); margin-left: 8px; }
+  #elev { width: 100%; height: 56px; display: block; margin-top: 6px; }
+
+  .dock { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+  .dock .num { font-size: clamp(36px, 5vw, 52px); margin-top: 18px; }
+  #m-cad .dot { background: var(--cadence); } #m-hr .dot { background: var(--hr); }
+  #m-spd .dot { background: var(--speed); } #m-dist .dot { background: var(--distance); }
+
+  .summary { position: fixed; inset: 0; background: rgba(11, 15, 20, 0.86);
+    backdrop-filter: blur(6px); display: none; overflow: auto; padding: 24px; }
+  .summary.show { display: block; }
+  .sum-wrap { max-width: 1100px; margin: 0 auto; display: grid; gap: 16px; }
+  .sum-head { display: flex; align-items: center; gap: 14px; }
+  .check { width: 36px; height: 36px; border-radius: 10px; display: grid; place-items: center;
+    background: rgba(52, 211, 153, 0.15); color: var(--success); font-weight: 700; }
+  .sum-head h1 { font-size: 24px; font-weight: 600; line-height: 1.2; }
+  .sum-head .grow { flex: 1; }
+  button { font: 600 14px var(--sans); color: var(--ink); background: var(--surface);
+    border: 1px solid var(--hairline); border-radius: 10px; padding: 10px 18px; cursor: pointer; }
+  button:hover { background: var(--elevated); }
+  .tiles { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; }
+  .tile { background: var(--surface); border: 1px solid var(--hairline); border-radius: 12px; padding: 14px 16px; }
+  .tile .num { font-size: 36px; margin-top: 8px; }
+  .sum-body { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; }
+  #chart { width: 100%; height: 280px; display: block; margin-top: 10px; }
+  .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+  .stats .num { font-size: 28px; margin-top: 6px; }
+  .note { color: var(--faint); font-size: 13px; }
+
+  @media (max-width: 760px) {
+    .hud { padding: 16px; gap: 12px; }
+    .dock { grid-template-columns: repeat(2, 1fr); }
+    .tiles { grid-template-columns: repeat(2, 1fr); }
+    .sum-body { grid-template-columns: 1fr; }
+    #status { display: none; }
+    .top { flex-direction: column; align-items: stretch; gap: 12px; }
+    .card { width: 100%; }
+    #elapsed { font-size: 32px; }
+  }
+</style>
+</head>
+<body>
+<canvas id="world" aria-hidden="true"></canvas>
+
+<main class="hud">
+  <div class="top">
+    <section class="panel">
+      <div class="label">Elapsed</div>
+      <div id="elapsed" class="num">00:00:00</div>
+      <div class="sub"><span class="dot"></span><span id="ride-sub">Simulated trainer</span></div>
+    </section>
+    <div id="status" class="off"><span class="dot"></span><span id="status-text">Connecting…</span></div>
+    <section class="panel card">
+      <div class="card-head"><span id="card-label" class="label">Ride</span><span id="card-note"></span></div>
+      <div id="card-title">Free ride</div>
+      <div class="card-row">
+        <span><span id="card-value" class="num">–</span><span id="card-unit" class="unit"></span></span>
+        <span id="card-time" class="num">0:00</span>
+      </div>
+      <div class="bar"><i id="card-bar"></i></div>
+    </section>
+  </div>
+
+  <section class="power">
+    <div class="label">Power</div>
+    <div id="power" class="num"><span id="power-v">0</span><span class="unit">W</span></div>
+    <div class="zone-row"><span id="zone">Z1 · RECOVERY</span><span id="wkg">0.0 W/kg · 0% FTP</span></div>
+    <div class="zones" id="zones"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+  </section>
+
+  <section class="panel">
+    <div class="elev-head">
+      <span class="label">Elevation · <span id="course-name">Simulated course</span></span>
+      <span class="label">Gradient<span id="grade">+0.0%</span></span>
+    </div>
+    <canvas id="elev"></canvas>
+  </section>
+
+  <section class="dock">
+    <div class="panel" id="m-cad"><div class="label"><span class="dot"></span>Cadence</div>
+      <div class="num"><span id="cad">–</span><span class="unit">rpm</span></div></div>
+    <div class="panel" id="m-hr"><div class="label"><span class="dot"></span>Heart rate</div>
+      <div class="num"><span id="hr">–</span><span class="unit">bpm</span></div></div>
+    <div class="panel" id="m-spd"><div class="label"><span class="dot"></span>Speed</div>
+      <div class="num"><span id="spd">0.0</span><span class="unit">km/h</span></div></div>
+    <div class="panel" id="m-dist"><div class="label"><span class="dot"></span>Distance</div>
+      <div class="num"><span id="dist">0.00</span><span class="unit">km</span></div></div>
+  </section>
+</main>
+
+<section class="summary" id="summary" aria-live="polite">
+  <div class="sum-wrap">
+    <div class="sum-head">
+      <div class="check">✓</div>
+      <div class="grow"><h1>Ride complete</h1><div class="sub" id="sum-sub"></div></div>
+      <button id="sum-close" type="button">Back to HUD</button>
+    </div>
+    <div class="tiles">
+      <div class="tile"><div class="label">Duration</div><div class="num" id="s-dur">–</div></div>
+      <div class="tile"><div class="label">Distance</div><div class="num"><span id="s-dist">–</span><span class="unit">km</span></div></div>
+      <div class="tile"><div class="label">Avg power</div><div class="num" style="color:var(--power)"><span id="s-avgp">–</span><span class="unit">W</span></div></div>
+      <div class="tile"><div class="label">Max power</div><div class="num"><span id="s-maxp">–</span><span class="unit">W</span></div></div>
+      <div class="tile"><div class="label">Avg speed</div><div class="num"><span id="s-avgv">–</span><span class="unit">km/h</span></div></div>
+    </div>
+    <div class="sum-body">
+      <div class="tile">
+        <div class="card-head"><span class="label" style="color:var(--ink)">Power</span>
+          <span class="note"><span style="color:var(--power)">●</span> Power &nbsp; – – Avg <span id="s-avgp2"></span> W</span></div>
+        <canvas id="chart"></canvas>
+      </div>
+      <div class="tile stats">
+        <div><div class="label">Avg heart rate</div><div class="num"><span id="s-hr">–</span><span class="unit">bpm</span></div></div>
+        <div><div class="label">Avg cadence</div><div class="num"><span id="s-cad">–</span><span class="unit">rpm</span></div></div>
+        <div><div class="label">Elevation gain</div><div class="num"><span id="s-elev">–</span><span class="unit">m</span></div></div>
+        <div><div class="label">Work</div><div class="num"><span id="s-work">–</span><span class="unit">kJ</span></div></div>
+        <p class="note" style="grid-column: 1 / -1">.fit recording and Strava upload arrive in phase 4.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<script>
+"use strict";
+const $ = (id) => document.getElementById(id);
+const css = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+const ZONES = [
+  [0.55, "Z1", "Recovery"], [0.75, "Z2", "Endurance"], [0.90, "Z3", "Tempo"],
+  [1.05, "Z4", "Threshold"], [1.20, "Z5", "VO₂ max"], [1.50, "Z6", "Anaerobic"],
+  [Infinity, "Z7", "Neuro"],
+];
+
+let cfg = { mode: "sim", grade: 0, target_power: null, duration_s: 60, ftp: 250, mass_kg: 78 };
+let samples = [];
+let last = null;          // latest sample
+let lastAt = 0;           // performance.now() when it arrived
+let dirty = false;
+
+function clock(s) {
+  s = Math.max(0, Math.floor(s));
+  const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60;
+  return [h, m, sec].map((v) => String(v).padStart(2, "0")).join(":");
+}
+function short(s) {
+  s = Math.max(0, Math.ceil(s));
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+}
+function zoneOf(power) {
+  const ratio = power / cfg.ftp;
+  const i = ZONES.findIndex(([max]) => ratio < max);
+  return { i, code: ZONES[i][1], name: ZONES[i][2], color: css(`--z${i + 1}`) };
+}
+const signed = (g) => `${g >= 0 ? "+" : ""}${g.toFixed(1)}%`;
+
+function applyConfig() {
+  const mode = cfg.mode.toUpperCase();
+  $("ride-sub").textContent = `Simulated trainer · ${mode} mode`;
+  $("grade").textContent = signed(cfg.grade);
+  $("course-name").textContent = `Steady ${signed(cfg.grade)} course`;
+  if (cfg.mode === "erg") {
+    $("card-label").textContent = "Workout · ERG";
+    $("card-title").textContent = "Target hold";
+    $("card-value").textContent = cfg.target_power;
+    $("card-unit").textContent = "W target";
+  } else {
+    $("card-label").textContent = cfg.mode === "sim" ? "Course · SIM" : "Free ride";
+    $("card-title").textContent = cfg.mode === "sim" ? `Steady ${signed(cfg.grade)} climb` : "No resistance control";
+    $("card-value").textContent = clock(cfg.duration_s).replace(/^00:/, "");
+    $("card-unit").textContent = "planned";
+  }
+}
+
+function render() {
+  dirty = false;
+  if (!last) return;
+  const p = last.power ?? 0;
+  const z = zoneOf(p);
+  $("elapsed").textContent = clock(last.t);
+  $("power-v").textContent = p;
+  $("zone").textContent = `${z.code} · ${z.name.toUpperCase()}`;
+  $("zone").style.borderColor = z.color;
+  $("wkg").textContent = `${(p / cfg.mass_kg).toFixed(1)} W/kg · ${Math.round((p / cfg.ftp) * 100)}% FTP`;
+  [...$("zones").children].forEach((el, i) => {
+    el.style.background = i <= z.i ? css(`--z${i + 1}`) : css("--elevated");
+  });
+  $("cad").textContent = last.cadence ?? "–";
+  $("hr").textContent = last.heart_rate ?? "–";
+  $("spd").textContent = ((last.speed ?? 0) * 3.6).toFixed(1);
+  $("dist").textContent = (last.distance / 1000).toFixed(2);
+  const left = cfg.duration_s - last.t;
+  $("card-time").textContent = short(left);
+  $("card-note").textContent = left > 0 ? "remaining" : "done";
+  $("card-bar").style.width = `${Math.min(100, (last.t / cfg.duration_s) * 100)}%`;
+  drawElevation();
+}
+const schedule = () => { if (!dirty) { dirty = true; requestAnimationFrame(render); } };
+
+function fit(canvas) {
+  const r = canvas.getBoundingClientRect(), dpr = window.devicePixelRatio || 1;
+  if (canvas.width !== Math.round(r.width * dpr) || canvas.height !== Math.round(r.height * dpr)) {
+    canvas.width = Math.round(r.width * dpr); canvas.height = Math.round(r.height * dpr);
+  }
+  const ctx = canvas.getContext("2d");
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  return [ctx, r.width, r.height];
+}
+
+// The course is a steady grade for now, so elevation is distance x grade.
+function drawElevation() {
+  const [ctx, w, h] = fit($("elev"));
+  ctx.clearRect(0, 0, w, h);
+  const d = last ? last.distance : 0, t = last ? last.t : 0;
+  const total = Math.max(d, t > 1 ? (d / t) * cfg.duration_s : 1000, 1);
+  const rise = (total * cfg.grade) / 100;
+  const lo = Math.min(0, rise), hi = Math.max(0, rise), span = hi - lo || 1;
+  const x = (dist) => 6 + (dist / total) * (w - 12);
+  const y = (dist) => rise
+    ? h - 8 - (((dist * cfg.grade) / 100 - lo) / span) * (h - 16)
+    : h / 2;
+  ctx.lineWidth = 2; ctx.lineCap = "round";
+  ctx.strokeStyle = css("--faint"); ctx.setLineDash([4, 5]);
+  ctx.beginPath(); ctx.moveTo(x(d), y(d)); ctx.lineTo(x(total), y(total)); ctx.stroke();
+  ctx.setLineDash([]); ctx.strokeStyle = css("--power");
+  ctx.beginPath(); ctx.moveTo(x(0), y(0)); ctx.lineTo(x(d), y(d)); ctx.stroke();
+  ctx.fillStyle = css("--power");
+  ctx.beginPath(); ctx.arc(x(d), y(d), 4, 0, Math.PI * 2); ctx.fill();
+}
+
+// Simulated world: horizon glow, hills and a road whose dashes move with distance.
+function drawWorld(now) {
+  const [ctx, w, h] = fit($("world"));
+  const horizon = h * 0.52;
+  const sky = ctx.createLinearGradient(0, 0, 0, horizon);
+  sky.addColorStop(0, "#0b0f14"); sky.addColorStop(1, "#1a2433");
+  ctx.fillStyle = sky; ctx.fillRect(0, 0, w, horizon);
+  const glow = ctx.createRadialGradient(w / 2, horizon, 0, w / 2, horizon, w * 0.45);
+  glow.addColorStop(0, "rgba(255,122,26,0.28)"); glow.addColorStop(1, "rgba(255,122,26,0)");
+  ctx.fillStyle = glow; ctx.fillRect(0, 0, w, horizon);
+  ctx.fillStyle = "#111a26";
+  ctx.beginPath(); ctx.moveTo(0, horizon);
+  for (let px = 0; px <= w; px += 8) {
+    ctx.lineTo(px, horizon - 18 - 14 * Math.sin(px / 140) - 8 * Math.sin(px / 47 + 1));
+  }
+  ctx.lineTo(w, horizon); ctx.fill();
+  const ground = ctx.createLinearGradient(0, horizon, 0, h);
+  ground.addColorStop(0, "#0f1712"); ground.addColorStop(1, "#0a0e0c");
+  ctx.fillStyle = ground; ctx.fillRect(0, horizon, w, h - horizon);
+
+  const cx = w / 2, near = h - horizon;
+  ctx.fillStyle = "#1b222c";
+  ctx.beginPath(); ctx.moveTo(cx - 6, horizon); ctx.lineTo(cx + 6, horizon);
+  ctx.lineTo(cx + w * 0.32, h); ctx.lineTo(cx - w * 0.32, h); ctx.fill();
+
+  // Extrapolate distance between 4 Hz samples so the road moves smoothly.
+  let dist = 0;
+  if (last) dist = last.distance + (last.speed ?? 0) * Math.min((now - lastAt) / 1000, 0.5);
+  const spacing = 12, dash = 4, cam = 4;
+  ctx.fillStyle = "rgba(242,245,248,0.55)";
+  for (let k = 0; k < 40; k++) {
+    const z0 = k * spacing - (dist % spacing) + cam, z1 = z0 + dash;
+    if (z0 <= cam * 0.5) continue;
+    const y0 = horizon + (near * cam) / z0, y1 = horizon + (near * cam) / z1;
+    const half = (3 * cam) / z0;
+    ctx.fillRect(cx - half, y1, half * 2, Math.max(1, y0 - y1));
+  }
+  // Rider marker.
+  const ry = horizon + near * 0.3;
+  ctx.fillStyle = css("--power");
+  ctx.beginPath(); ctx.arc(cx, ry, 11, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = "#0b0f14";
+  ctx.beginPath(); ctx.arc(cx, ry, 4.5, 0, Math.PI * 2); ctx.fill();
+  requestAnimationFrame(drawWorld);
+}
+
+function showSummary(final) {
+  if (!samples.length) return;
+  const powers = samples.map((s) => s.power ?? 0);
+  const avg = (xs) => xs.reduce((a, b) => a + b, 0) / Math.max(xs.length, 1);
+  const hrs = samples.map((s) => s.heart_rate).filter((v) => v != null);
+  const cads = samples.map((s) => s.cadence).filter((v) => v != null);
+  let work = 0;
+  for (let i = 1; i < samples.length; i++) work += (samples[i].power ?? 0) * (samples[i].t - samples[i - 1].t);
+  const avgP = Math.round(avg(powers));
+  $("s-dur").textContent = clock(final.elapsed);
+  $("s-dist").textContent = (final.distance / 1000).toFixed(2);
+  $("s-avgp").textContent = avgP; $("s-avgp2").textContent = avgP;
+  $("s-maxp").textContent = Math.max(...powers);
+  $("s-avgv").textContent = final.elapsed ? ((final.distance / final.elapsed) * 3.6).toFixed(1) : "0.0";
+  $("s-hr").textContent = hrs.length ? Math.round(avg(hrs)) : "–";
+  $("s-cad").textContent = cads.length ? Math.round(avg(cads)) : "–";
+  $("s-elev").textContent = Math.max(0, Math.round((final.distance * cfg.grade) / 100));
+  $("s-work").textContent = Math.round(work / 1000);
+  $("sum-sub").textContent = `Simulated · ${cfg.mode.toUpperCase()} · ${signed(cfg.grade)} · ${new Date().toLocaleString()}`;
+  $("summary").classList.add("show");
+  drawChart(avgP);
+}
+
+function drawChart(avgP) {
+  const [ctx, w, h] = fit($("chart"));
+  ctx.clearRect(0, 0, w, h);
+  const tMax = samples[samples.length - 1].t || 1;
+  const pMax = Math.max(cfg.ftp * 1.3, ...samples.map((s) => s.power ?? 0)) * 1.05;
+  const x = (t) => (t / tMax) * w, y = (p) => h - (p / pMax) * h;
+  // Zone bands relative to FTP.
+  let lower = 0;
+  ZONES.forEach(([max], i) => {
+    const upper = Math.min(max * cfg.ftp, pMax);
+    if (upper > lower) {
+      ctx.globalAlpha = 0.07; ctx.fillStyle = css(`--z${i + 1}`);
+      ctx.fillRect(0, y(upper), w, y(lower) - y(upper));
+    }
+    lower = upper;
+  });
+  ctx.globalAlpha = 1;
+  ctx.strokeStyle = css("--muted"); ctx.setLineDash([5, 5]); ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(0, y(avgP)); ctx.lineTo(w, y(avgP)); ctx.stroke();
+  ctx.setLineDash([]); ctx.strokeStyle = css("--power"); ctx.lineWidth = 2; ctx.lineJoin = "round";
+  ctx.beginPath();
+  samples.forEach((s, i) => (i ? ctx.lineTo : ctx.moveTo).call(ctx, x(s.t), y(s.power ?? 0)));
+  ctx.stroke();
+}
+
+function setStatus(live, text) {
+  $("status").className = live ? "live" : "off";
+  $("status-text").textContent = text;
+}
+
+const events = new EventSource("/events");
+events.addEventListener("open", () => setStatus(true, "Live · simulated trainer"));
+events.addEventListener("error", () => setStatus(false, "Reconnecting…"));
+// The server replays the whole ride on every (re)connect, starting with config.
+events.addEventListener("config", (e) => {
+  cfg = JSON.parse(e.data); samples = []; last = null;
+  $("summary").classList.remove("show");
+  applyConfig();
+});
+events.addEventListener("sample", (e) => {
+  last = JSON.parse(e.data); lastAt = performance.now();
+  samples.push(last); schedule();
+});
+events.addEventListener("done", (e) => {
+  setStatus(true, "Ride finished");
+  showSummary(JSON.parse(e.data));
+});
+$("sum-close").addEventListener("click", () => $("summary").classList.remove("show"));
+window.addEventListener("resize", schedule);
+applyConfig();
+requestAnimationFrame(drawWorld);
+</script>
+</body>
+</html>
