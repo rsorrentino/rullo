@@ -19,7 +19,7 @@
 import asyncio
 import logging
 import random
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Awaitable, Callable
 
 from rullo.devices.base import Mode
 from rullo.telemetry import Telemetry
@@ -39,7 +39,8 @@ class SimulatedDevice:
     In SIM mode the rider holds ``rider_power`` but eases off slightly as the
     course grade steepens. In ERG mode the emitted power converges toward the
     last ``set_target_power``. FREE mode ignores grade entirely. Output is
-    deterministic for a given ``seed``.
+    deterministic for a given ``seed``; inject ``sleep`` to run faster than
+    real time (e.g. in tests).
     """
 
     def __init__(
@@ -50,6 +51,7 @@ class SimulatedDevice:
         heart_rate: int = 140,
         rate_hz: float = 4.0,
         seed: int = 0,
+        sleep: Callable[[float], Awaitable[None]] = asyncio.sleep,
     ) -> None:
         self._mode = mode
         self._rider_power = rider_power
@@ -57,6 +59,7 @@ class SimulatedDevice:
         self._heart_rate = heart_rate
         self._rate_hz = rate_hz
         self._rng = random.Random(seed)
+        self._sleep = sleep
         self._connected = False
         self.grade = 0.0
         self.target_power: int | None = None
@@ -76,7 +79,7 @@ class SimulatedDevice:
                 heart_rate=self._heart_rate,
             )
             t += dt
-            await asyncio.sleep(dt)
+            await self._sleep(dt)
 
     def _next_power(self) -> int:
         jitter = self._rng.gauss(0.0, 2.0)
