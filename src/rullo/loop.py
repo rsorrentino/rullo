@@ -21,8 +21,10 @@ from collections.abc import AsyncIterator
 from dataclasses import dataclass
 
 from rullo.bus import TelemetryBus
+from rullo.course import Course
 from rullo.devices.base import Device
 from rullo.physics import RiderParams, speed_from_power
+from rullo.resistance import ResistanceController
 from rullo.telemetry import Telemetry
 
 
@@ -33,6 +35,8 @@ class SessionState:
     speed: float = 0.0  # m/s
     distance: float = 0.0  # m
     elapsed: float = 0.0  # s
+    grade: float = 0.0  # % at the current position
+    elevation: float = 0.0  # m at the current position
 
 
 async def run_loop(
@@ -44,11 +48,15 @@ async def run_loop(
     max_ticks: int | None = None,
     duration_s: float | None = None,
     state: SessionState | None = None,
+    course: Course | None = None,
+    controller: ResistanceController | None = None,
+    stop: asyncio.Event | None = None,
 ) -> SessionState:
     """Pull telemetry, compute speed, publish enriched samples, integrate distance.
 
-    The loop is the only writer of resistance commands: after connecting it
-    sends ``grade`` (SIM mode) and, if given, ``target_power`` (ERG mode).
+    With a ``course`` the grade follows the rider's position, otherwise it is
+    the constant ``grade``. Resistance commands go through ``controller`` every
+    tick; without one, ``grade`` and ``target_power`` are sent once at start.
     """
     rider = params or RiderParams()
     state = state if state is not None else SessionState()
@@ -56,17 +64,28 @@ async def run_loop(
     ticks = 0
     await device.connect()
     try:
-        await device.set_grade(grade)
-        if target_power is not None:
-            await device.set_target_power(target_power)
+        if controller is None:
+            await device.set_grade(grade)
+            if target_power is not None:
+                await device.set_target_power(target_power)
         async for sample in device.telemetry():
             dt = 0.0 if prev_t is None else sample.t - prev_t
             prev_t = sample.t
+            if course is not None:
+                state.grade = course.grade_at(state.distance)
+            else:
+                state.grade = grade
             state.speed = speed_from_power(
-                sample.power or 0.0, grade, state.speed, rider, dt
+                sample.power or 0.0, state.grade, state.speed, rider, dt
             )
             state.distance += state.speed * dt
             state.elapsed = sample.t
+            if course is not None:
+                state.elevation = course.elevation_at(state.distance)
+            else:
+                state.elevation = state.distance * grade / 100.0
+            if controller is not None:
+                await controller.update(sample.t, state.grade, sample.cadence)
             bus.publish(
                 Telemetry(
                     t=sample.t,
@@ -81,6 +100,8 @@ async def run_loop(
                 break
             if duration_s is not None and state.elapsed >= duration_s:
                 break
+            if stop is not None and stop.is_set():
+                break
     finally:
         await device.disconnect()
     return state
@@ -90,14 +111,16 @@ async def run(
     device: Device,
     params: RiderParams | None = None,
     course_grade: float = 0.0,
-    duration_s: float = 60.0,
+    duration_s: float | None = 60.0,
     target_power: int | None = None,
+    course: Course | None = None,
+    controller: ResistanceController | None = None,
 ) -> SessionState:
     """Run a session against ``device``, printing a one-line HUD per tick."""
     bus = TelemetryBus()
     state = SessionState()
     hud = bus.subscribe()
-    printer = asyncio.ensure_future(_print_hud(hud, state, course_grade))
+    printer = asyncio.ensure_future(_print_hud(hud, state))
     try:
         return await run_loop(
             device,
@@ -107,19 +130,19 @@ async def run(
             target_power=target_power,
             duration_s=duration_s,
             state=state,
+            course=course,
+            controller=controller,
         )
     finally:
         printer.cancel()
         await asyncio.gather(printer, return_exceptions=True)
 
 
-async def _print_hud(
-    samples: AsyncIterator[Telemetry], state: SessionState, course_grade: float
-) -> None:
+async def _print_hud(samples: AsyncIterator[Telemetry], state: SessionState) -> None:
     async for sample in samples:
         speed_kmh = (sample.speed or 0.0) * 3.6
         print(
             f"P:{sample.power or 0:>4}W  C:{sample.cadence or 0:>3}rpm  "
             f"HR:{sample.heart_rate or 0:>3}bpm  V:{speed_kmh:5.1f}km/h  "
-            f"G:{course_grade:+.1f}%  D:{state.distance / 1000.0:6.3f}km"
+            f"G:{state.grade:+.1f}%  D:{state.distance / 1000.0:6.3f}km"
         )
