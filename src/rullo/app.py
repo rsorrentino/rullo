@@ -370,6 +370,7 @@ class App:
                 {
                     "t": sample.t,
                     "moving": moving,
+                    "ridden": clock.ridden,
                     "clock": clock.state,
                     "power": sample.power,
                     "cadence": sample.cadence,

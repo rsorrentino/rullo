@@ -38,7 +38,8 @@ class RideClock:
 
     def __init__(self, pedal_to_start: bool = True) -> None:
         self.state = "waiting" if pedal_to_start else "riding"
-        self.moving = 0.0
+        self.moving = 0.0  # workout position: moving time plus skipped blocks
+        self.ridden = 0.0  # time actually ridden (what the rider's clock shows)
         self._prev_t: float | None = None
         self.held = False  # resistance eased off for the current pause
 
@@ -48,6 +49,7 @@ class RideClock:
             self._prev_t = t  # moving time starts at the first stroke
         if self.state == "riding" and self._prev_t is not None:
             self.moving += t - self._prev_t
+            self.ridden += t - self._prev_t
         self._prev_t = t
         return self.moving
 

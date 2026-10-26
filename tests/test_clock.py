@@ -39,5 +39,6 @@ def test_pause_freezes_moving_time_and_skip_jumps_forward() -> None:
     assert clock.tick(42.0, 200, 90) == 12.0  # the 30 s pause is not counted
     clock.skip_to(100.0)
     assert clock.tick(43.0, 200, 90) == 101.0
+    assert clock.ridden == 13.0  # skipping moves the workout, not the rider's clock
     clock.skip_to(50.0)  # never backwards
     assert clock.moving == 101.0

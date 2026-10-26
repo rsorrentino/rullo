@@ -156,6 +156,7 @@
   .ride-title { color: var(--secondary); font-size: 17px; text-align: center; flex: 1; min-width: 0;
     overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .rec { display: flex; align-items: center; gap: 14px; flex: none; }
+  .ride-ctl { display: flex; gap: 8px; }
   .rec-state { color: var(--success); font-size: 15px; display: flex; align-items: center; }
   .rec-state .dot { background: var(--success); }
   .rec-state.off { color: var(--warn); } .rec-state.off .dot { background: #e08a0e; }
@@ -193,6 +194,21 @@
   #grade { font: 700 22px var(--display); color: var(--accent); margin-left: 10px; letter-spacing: 0; }
   #elev { width: 100%; height: 64px; display: block; margin-top: 10px; }
   .elev-card { padding: 20px 24px; }
+
+  .hud-notice { display: flex; align-items: center; gap: 12px; padding: 14px 20px; border-radius: var(--r-card);
+    background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+  .hud-notice.warn { background: #fbefdc; color: var(--warn); }
+  .hud-notice.ok { background: #e6f4ea; color: var(--success); }
+  .btn.icon-only { padding: 7px 10px; }
+  .zone-bars { display: grid; gap: 8px; margin-top: 12px; }
+  .zone-bar { display: grid; grid-template-columns: 110px minmax(0, 1fr) 56px; gap: 12px; align-items: center; font-size: 14px; color: var(--secondary); }
+  .zone-bar .track { height: 10px; border-radius: 999px; background: var(--track); overflow: hidden; }
+  .zone-bar .track i { display: block; height: 100%; border-radius: inherit; }
+  .zone-bar b { color: var(--ink); text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .ramp-card { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; background: var(--accent-soft); border-color: #d6d9fb; }
+  .ramp-card .num { font-size: 34px; color: var(--accent); }
+  .chart { width: 100%; height: 260px; display: block; margin-top: 14px; }
+  .legend-dot { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin: 0 6px 0 14px; vertical-align: -1px; }
 
   /* Summary */
   .sum-head { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; margin-bottom: 4px; }
@@ -247,6 +263,10 @@
     .power-foot span { padding: 0 12px; }
     .ride-title { display: none; }
     #elapsed { font-size: 22px; }
+    .ride-top { height: auto; flex-wrap: wrap; padding-top: 10px; padding-bottom: 10px; row-gap: 10px; }
+    .rec { flex: 1; justify-content: flex-end; flex-wrap: wrap; row-gap: 10px; }
+    .ride-ctl { width: 100%; }
+    .ride-ctl .btn:not(.icon-only) { flex: 1; }
     .actions { width: 100%; display: grid; grid-template-columns: 1fr 1fr; }
     .actions .btn:first-child { grid-column: 1 / -1; }
     .tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -265,6 +285,8 @@
   <symbol id="i-cadence" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="8"/><path d="M12 12l4-3"/></symbol>
   <symbol id="i-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></symbol>
   <symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></symbol>
+  <symbol id="i-sound" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9v6h4l5 4V5L8 9zM16 9a4 4 0 0 1 0 6M18.5 6.5a8 8 0 0 1 0 11"/></symbol>
+  <symbol id="i-mute" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9v6h4l5 4V5L8 9zM17 10l4 4M21 10l-4 4"/></symbol>
   <symbol id="i-trash" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></symbol>
   <symbol id="i-strava" viewBox="0 0 24 24" fill="currentColor"><path d="M9.8 2 4 13.3h3.4l2.4-4.6 2.3 4.6h3.4zM15.6 13.3l-1.7 3.3-1.7-3.3H9.6l4.3 8.7 4.3-8.7z"/></symbol>
 </svg>
@@ -278,6 +300,7 @@
       <a class="nav" href="#workouts" data-view="workouts">Workouts</a>
       <a class="nav" href="#routes" data-view="routes">Routes</a>
       <a class="nav" href="#history" data-view="history">History</a>
+      <a class="nav" href="#progress" data-view="progress">Progress</a>
       <a class="nav" href="#settings" data-view="settings">Settings</a>
     </nav>
     <span class="top-meta" id="top-meta"></span>
@@ -353,7 +376,7 @@
   <main class="view" id="v-workouts" hidden>
     <div class="head">
       <div><h1>Workouts</h1><p>Structured sessions run in ERG mode: the trainer holds each target for you.</p></div>
-      <label class="btn">Import .zwo<input type="file" id="zwo-file" accept=".zwo,.xml" hidden></label>
+      <label class="btn">Import workout<input type="file" id="zwo-file" accept=".zwo,.erg,.mrc,.xml" hidden></label>
     </div>
     <div class="stack">
       <div class="grid3" id="workout-grid"></div>
@@ -382,6 +405,34 @@
       <tbody id="history-rows"></tbody></table></div>
   </main>
 
+  <!-- Progress -->
+  <main class="view" id="v-progress" hidden>
+    <div class="head"><div><h1>Progress</h1><p>Your power curve and training load, from the rides on this computer.</p></div></div>
+    <div class="stack">
+      <div class="card ramp-card" id="ftp-card">
+        <div class="grow"><div class="label">FTP estimate · last 90 days</div>
+          <div class="row" style="gap:12px;align-items:baseline;margin-top:8px"><span class="num" id="p-ftp-est">–</span><span class="muted" id="p-ftp-note"></span></div></div>
+        <button class="btn primary" id="p-ftp-apply" type="button" hidden>Use as my FTP</button>
+      </div>
+      <div class="card">
+        <div class="footer-bar"><h2>Power curve</h2>
+          <span class="legend"><span class="legend-dot" style="background:var(--accent)"></span>Last 90 days<span class="legend-dot" style="background:#c9cbe6"></span>All time</span></div>
+        <canvas class="chart" id="curve"></canvas>
+        <p class="note" id="curve-note" style="margin-top:10px"></p>
+      </div>
+      <div class="card">
+        <div class="footer-bar"><h2>Training load</h2>
+          <span class="legend"><span class="legend-dot" style="background:var(--accent)"></span>Fitness (CTL)<span class="legend-dot" style="background:var(--hr)"></span>Fatigue (ATL)<span class="legend-dot" style="background:var(--success)"></span>Form (TSB)</span></div>
+        <canvas class="chart" id="load"></canvas>
+        <div class="kv" style="margin-top:16px;grid-template-columns:repeat(3,minmax(0,1fr))">
+          <div><div class="label">Fitness</div><div class="num" id="p-ctl">–</div></div>
+          <div><div class="label">Fatigue</div><div class="num" id="p-atl">–</div></div>
+          <div><div class="label">Form</div><div class="num" id="p-tsb">–</div></div>
+        </div>
+      </div>
+    </div>
+  </main>
+
   <!-- Settings -->
   <main class="view narrow" id="v-settings" hidden>
     <div class="head"><div><h1>Settings</h1><p>Stored on this computer only.</p></div></div>
@@ -389,12 +440,18 @@
       <div class="card"><h2 style="margin-bottom:18px">Rider</h2><div class="form">
         <label>Weight, rider + bike (kg)<input type="number" name="mass_kg" step="0.1" min="20" max="250" required></label>
         <label>FTP (W)<input type="number" name="ftp" min="50" max="700" required></label>
+        <label>Max heart rate (bpm)<input type="number" name="max_hr" min="0" max="240">
+          <span class="hint">Used for heart-rate zones. Leave 0 if you do not know it.</span></label>
       </div></div>
       <div class="card"><h2 style="margin-bottom:18px">Trainer</h2><div class="form">
         <label>Trainer difficulty (%)<input type="number" name="difficulty_pct" min="0" max="100" required>
           <span class="hint">How much of the real gradient you feel. 50% is a common default.</span></label>
         <label>ERG cadence floor (rpm)<input type="number" name="cadence_floor" min="20" max="100" required>
           <span class="hint">Below this, ERG resistance is released so you can recover.</span></label>
+        <label>Descent feel (%)<input type="number" name="descent_pct" min="0" max="100" required>
+          <span class="hint">How much of a descent you feel, after difficulty. Lower is gentler.</span></label>
+        <label>Steepest pitch (%)<input type="number" name="grade_cap" min="1" max="25" step="0.5" required>
+          <span class="hint">The trainer never simulates more than this, up or down.</span></label>
         <label>Simulated rider power (W)<input type="number" name="sim_power" min="0" max="1500" required>
           <span class="hint">What the simulated trainer pedals in SIM and Free mode.</span></label>
       </div></div>
@@ -431,10 +488,16 @@
           <button class="btn strava" id="up-strava" type="button"><svg><use href="#i-strava"/></svg><span>Upload to Strava</span></button>
           <button class="btn" id="up-intervals" type="button"><span>Upload to intervals.icu</span></button>
           <a class="btn" id="save-fit" href="#" download>Save .fit</a>
+          <a class="btn" id="save-tcx" href="#" download>Save .tcx</a>
           <button class="btn danger" id="delete-ride" type="button"><svg><use href="#i-trash"/></svg>Delete</button>
         </div>
       </div>
       <div class="note" id="sum-note" hidden></div>
+      <div class="card ramp-card" id="ramp-card" hidden>
+        <div class="grow"><div class="label">FTP ramp test result</div>
+          <div class="row" style="gap:12px;align-items:baseline;margin-top:8px"><span class="num" id="ramp-ftp">–</span><span class="muted" id="ramp-note"></span></div></div>
+        <button class="btn primary" id="ramp-apply" type="button">Use as my FTP</button>
+      </div>
       <div class="tiles">
         <div class="card tile"><div class="label">Duration</div><div class="num" id="s-dur">–</div></div>
         <div class="card tile"><div class="label">Distance</div><div class="num"><span id="s-dist">–</span><span class="unit">km</span></div></div>
@@ -467,6 +530,12 @@
             <div><div class="label">Avg cadence</div><div class="num"><span id="s-cad">–</span><span class="unit">rpm</span></div></div>
             <div><div class="label">Work</div><div class="num"><span id="s-work">–</span><span class="unit">kJ</span></div></div>
           </div>
+          <div class="card">
+            <div class="label">Time in power zones</div>
+            <div class="zone-bars" id="zones-power"></div>
+            <div id="zones-hr-wrap" hidden><div class="label" style="margin-top:20px">Time in heart-rate zones</div>
+              <div class="zone-bars" id="zones-hr"></div></div>
+          </div>
           <button class="btn" id="sum-close" type="button" style="width:100%;padding:16px">Done</button>
         </div>
       </div>
@@ -482,10 +551,16 @@
     <div class="rec">
       <span class="rec-state off" id="status"><span class="dot"></span><span id="status-text">Connecting</span></span>
       <span class="num" id="elapsed">00:00:00</span>
-      <button class="btn small" id="end" type="button">End ride</button>
+      <div class="ride-ctl">
+        <button class="btn small icon-only" id="sound" type="button" aria-pressed="true" title="Sound cues on"><svg><use href="#i-sound"/></svg></button>
+        <button class="btn small" id="skip" type="button" hidden>Skip block</button>
+        <button class="btn small" id="pause" type="button">Pause</button>
+        <button class="btn small" id="end" type="button">End ride</button>
+      </div>
     </div>
   </header>
   <main class="hud">
+    <div class="hud-notice" id="hud-notice" hidden></div>
     <section class="card strip">
       <div><div class="label" id="strip-label">Ride</div><div class="strip-name" id="strip-name"></div></div>
       <div class="strip-bars" id="strip-bars" hidden></div>
@@ -676,7 +751,7 @@ function remember() {
 }
 
 // ---------- views ----------
-const VIEWS = ["ride", "workouts", "routes", "history", "settings"];
+const VIEWS = ["ride", "workouts", "routes", "history", "progress", "settings"];
 function showView() {
   const name = VIEWS.includes(location.hash.slice(1)) ? location.hash.slice(1) : "ride";
   const summaryOpen = !$("summary").hidden;
@@ -685,6 +760,7 @@ function showView() {
   $("top-meta").textContent = name === "ride" ? "Setup · 1 of 2" : settings ? `${settings.mass_kg} kg · FTP ${settings.ftp} W` : "";
   window.scrollTo(0, 0);  // every page starts at its title
   if (name === "history") loadHistory();
+  if (name === "progress") loadProgress();
   if (name === "routes") renderRoutes();
   if (name === "workouts") renderWorkouts();
 }
@@ -753,7 +829,7 @@ function renderWorkouts() {
     const b = document.createElement("button");
     b.type = "button"; b.className = `card pick${w.id === choice.workout ? " on" : ""}`;
     b.innerHTML = `<div class="bars"></div>
-      <div class="pick-title"><span class="grow">${esc(w.name)}</span>${w.id === choice.workout ? '<span class="pill accent">Selected</span>' : ""}</div>
+      <div class="pick-title"><span class="grow">${esc(w.name)}</span>${w.id === choice.workout ? '<span class="pill accent">Selected</span>' : w.ramp_test ? '<span class="pill">FTP test</span>' : ""}</div>
       <div class="small faint" style="margin-top:2px">${esc(w.description)}</div>
       <div class="stats3"><div><div class="num">${hm(w.duration)}</div><div class="label">Time</div></div>
         <div><div class="num">${w.tss}</div><div class="label">TSS</div></div>
@@ -805,6 +881,93 @@ async function loadHistory() {
   } catch (e) { body.innerHTML = `<tr><td colspan="8" class="empty-row">${esc(e.message)}</td></tr>`; }
 }
 
+// ---------- progress ----------
+const CURVE_LABELS = { 5: "5s", 10: "10s", 30: "30s", 60: "1m", 120: "2m", 300: "5m", 600: "10m", 1200: "20m", 1800: "30m", 3600: "1h" };
+let progressData = null;
+async function loadProgress() {
+  try { progressData = await api("/api/progress"); } catch (e) { toast(e.message, true); return; }
+  const p = progressData;
+  $("p-ftp-est").innerHTML = p.ftp_estimate ? `${p.ftp_estimate}<span class="unit">W</span>` : "–";
+  $("p-ftp-note").textContent = p.ftp_estimate
+    ? `95% of your best 20 minutes · current FTP ${p.ftp} W`
+    : "Ride at least 20 minutes hard, or take the FTP ramp test, to get an estimate.";
+  $("p-ftp-apply").hidden = !p.ftp_estimate || p.ftp_estimate === p.ftp;
+  $("p-ftp-apply").dataset.ftp = p.ftp_estimate || "";
+  $("curve-note").textContent = p.rides ? `${p.rides} ride${p.rides > 1 ? "s" : ""} on this computer.` : "No rides yet.";
+  const today = p.load[p.load.length - 1];
+  $("p-ctl").textContent = today ? today.ctl.toFixed(0) : "–";
+  $("p-atl").textContent = today ? today.atl.toFixed(0) : "–";
+  $("p-tsb").textContent = today ? `${today.tsb >= 0 ? "+" : ""}${today.tsb.toFixed(0)}` : "–";
+  requestAnimationFrame(drawProgress);
+}
+
+function drawProgress() {
+  if (!progressData || $("v-progress").hidden) return;
+  drawCurve($("curve"), progressData.curve, progressData.curve_90d);
+  drawLoad($("load"), progressData.load);
+}
+
+function axis(ctx, w, h, pad) {
+  ctx.strokeStyle = css("--hairline"); ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(pad.l, h - pad.b + 0.5); ctx.lineTo(w - pad.r, h - pad.b + 0.5); ctx.stroke();
+  ctx.fillStyle = css("--faint"); ctx.font = `12px ${css("--sans")}`;
+}
+
+function drawCurve(canvas, all, recent) {
+  const [ctx, w, h] = fit(canvas);
+  ctx.clearRect(0, 0, w, h);
+  const keys = Object.keys(CURVE_LABELS).map(Number);
+  const pad = { l: 44, r: 12, t: 12, b: 26 };
+  const maxW = Math.max(100, ...Object.values(all)) * 1.1;
+  const x = (d) => pad.l + (Math.log(d / 5) / Math.log(3600 / 5)) * (w - pad.l - pad.r);
+  const y = (p) => pad.t + (1 - p / maxW) * (h - pad.t - pad.b);
+  axis(ctx, w, h, pad);
+  ctx.textAlign = "center";
+  keys.forEach((d) => ctx.fillText(CURVE_LABELS[d], x(d), h - 8));
+  ctx.textAlign = "right";
+  for (let p = 0; p <= maxW; p += maxW > 600 ? 200 : 100) {
+    ctx.fillText(String(p), pad.l - 8, y(p) + 4);
+    ctx.strokeStyle = "#f0f1f4"; ctx.beginPath(); ctx.moveTo(pad.l, y(p)); ctx.lineTo(w - pad.r, y(p)); ctx.stroke();
+  }
+  const line = (curve, color, width) => {
+    const pts = keys.filter((d) => curve[d]).map((d) => [x(d), y(curve[d])]);
+    if (!pts.length) return;
+    ctx.strokeStyle = color; ctx.lineWidth = width; ctx.lineJoin = "round";
+    ctx.beginPath(); pts.forEach(([px, py], i) => (i ? ctx.lineTo(px, py) : ctx.moveTo(px, py))); ctx.stroke();
+    ctx.fillStyle = color; pts.forEach(([px, py]) => { ctx.beginPath(); ctx.arc(px, py, 3, 0, Math.PI * 2); ctx.fill(); });
+  };
+  line(all, "#c9cbe6", 2);
+  line(recent, css("--accent"), 2.5);
+}
+
+function drawLoad(canvas, load) {
+  const [ctx, w, h] = fit(canvas);
+  ctx.clearRect(0, 0, w, h);
+  const pad = { l: 36, r: 12, t: 12, b: 26 };
+  if (!load.length) { axis(ctx, w, h, pad); return; }
+  const hi = Math.max(20, ...load.map((d) => Math.max(d.ctl, d.atl))) * 1.15;
+  const lo = Math.min(0, ...load.map((d) => d.tsb)) * 1.15;
+  const x = (i) => pad.l + (i / Math.max(load.length - 1, 1)) * (w - pad.l - pad.r);
+  const y = (v) => pad.t + ((hi - v) / (hi - lo)) * (h - pad.t - pad.b);
+  axis(ctx, w, h, pad);
+  ctx.strokeStyle = "#f0f1f4"; ctx.beginPath(); ctx.moveTo(pad.l, y(0)); ctx.lineTo(w - pad.r, y(0)); ctx.stroke();
+  const bw = Math.max(1, (w - pad.l - pad.r) / load.length - 1);
+  load.forEach((d, i) => {
+    ctx.fillStyle = tint(css(d.tsb >= 0 ? "--success" : "--hr"), 0.25);
+    ctx.fillRect(x(i) - bw / 2, Math.min(y(0), y(d.tsb)), bw, Math.abs(y(d.tsb) - y(0)));
+  });
+  for (const [key, color] of [["atl", css("--hr")], ["ctl", css("--accent")]]) {
+    ctx.strokeStyle = color; ctx.lineWidth = 2; ctx.lineJoin = "round"; ctx.beginPath();
+    load.forEach((d, i) => (i ? ctx.lineTo(x(i), y(d[key])) : ctx.moveTo(x(i), y(d[key]))));
+    ctx.stroke();
+  }
+  ctx.textAlign = "center"; ctx.fillStyle = css("--faint");
+  [0, Math.floor(load.length / 2), load.length - 1].forEach((i) => {
+    const d = new Date(load[i].date);
+    ctx.fillText(d.toLocaleDateString([], { day: "numeric", month: "short" }), x(i), h - 8);
+  });
+}
+
 // Deleting removes the local .fit and summary; copies already uploaded elsewhere stay there.
 async function deleteRide(ride) {
   const uploaded = Object.keys(ride.uploads || {}).length > 0;
@@ -825,6 +988,8 @@ function fillSettings() {
   f.mass_kg.value = settings.mass_kg; f.ftp.value = settings.ftp;
   f.difficulty_pct.value = Math.round(settings.difficulty * 100);
   f.cadence_floor.value = settings.cadence_floor; f.sim_power.value = settings.sim_power;
+  f.max_hr.value = settings.max_hr; f.grade_cap.value = settings.grade_cap;
+  f.descent_pct.value = Math.round(settings.descent_scale * 100);
   f.strava_client_id.value = settings.strava_client_id;
   f.strava_client_secret.placeholder = settings.strava_client_secret_set ? "Saved — leave blank to keep" : "";
   f.intervals_athlete_id.value = settings.intervals_athlete_id;
@@ -842,6 +1007,7 @@ async function saveSettings() {
   settings = await api("/api/settings", { method: "POST", json: {
     mass_kg: f.mass_kg.value, ftp: f.ftp.value, difficulty: Number(f.difficulty_pct.value) / 100,
     cadence_floor: f.cadence_floor.value, sim_power: f.sim_power.value,
+    max_hr: f.max_hr.value || 0, grade_cap: f.grade_cap.value, descent_scale: Number(f.descent_pct.value) / 100,
     strava_client_id: f.strava_client_id.value, strava_client_secret: f.strava_client_secret.value,
     intervals_athlete_id: f.intervals_athlete_id.value, intervals_api_key: f.intervals_api_key.value,
   } });
@@ -854,11 +1020,76 @@ const RING = 2 * Math.PI * 86, OVER = 2 * Math.PI * 70;
 
 function showRide(on) {
   $("ride").hidden = !on; $("app").hidden = on;
+  keepAwake(on);
   if (!on) showView();
 }
 
+function renderNotice() {
+  const n = $("hud-notice");
+  const state = last ? last.clock : "waiting";
+  let text = "", kind = "";
+  if (last && last.ramp_failed) { text = "Ramp test complete — cooling down. Your FTP estimate is on the summary."; kind = "ok"; }
+  else if (state === "waiting") text = "Start pedalling to begin — the timer starts on your first pedal stroke.";
+  else if (state === "paused") { text = "Paused — resistance eased off. Resume when you are ready."; kind = "warn"; }
+  n.hidden = !text; n.textContent = text; n.className = `hud-notice ${kind}`;
+  $("pause").textContent = state === "paused" ? "Resume" : "Pause";
+  $("pause").disabled = state === "waiting";
+}
+
+// ---------- audio cues (Web Audio, generated locally) ----------
+let audio = null, lastCueStep = null, lastCueSecond = null, lastCueState = null;
+const soundOn = () => store.get("rullo.sound") !== "off";
+function beep(freq = 880, ms = 120, count = 1) {
+  if (!soundOn()) return;
+  try {
+    audio = audio || new (window.AudioContext || window.webkitAudioContext)();
+    for (let i = 0; i < count; i++) {
+      const t0 = audio.currentTime + i * (ms / 1000 + 0.08);
+      const osc = audio.createOscillator(), gain = audio.createGain();
+      osc.frequency.value = freq; osc.connect(gain); gain.connect(audio.destination);
+      gain.gain.setValueAtTime(0.0001, t0);
+      gain.gain.exponentialRampToValueAtTime(0.25, t0 + 0.01);
+      gain.gain.exponentialRampToValueAtTime(0.0001, t0 + ms / 1000);
+      osc.start(t0); osc.stop(t0 + ms / 1000 + 0.02);
+    }
+  } catch { /* audio unavailable */ }
+}
+function cues() {
+  if (!last) return;
+  if (lastCueState === "waiting" && last.clock === "riding") beep(660, 160, 2);  // started
+  lastCueState = last.clock;
+  const w = cfg.workout;
+  if (!w || last.clock !== "riding") return;
+  const step = w.steps[Math.min(last.step, w.steps.length - 1)];
+  if (lastCueStep !== null && last.step !== lastCueStep) beep(990, 220);  // new block
+  lastCueStep = last.step;
+  const left = Math.ceil(step.start + step.duration - last.moving);
+  if (left >= 1 && left <= 3 && left !== lastCueSecond) beep(740, 90);  // 3-2-1
+  lastCueSecond = left;
+}
+function renderSound() {
+  const on = soundOn();
+  $("sound").setAttribute("aria-pressed", String(on));
+  $("sound").title = on ? "Sound cues on" : "Sound cues off";
+  $("sound").querySelector("use").setAttribute("href", on ? "#i-sound" : "#i-mute");
+}
+
+// ---------- keep the screen awake while riding ----------
+let wakeLock = null;
+async function keepAwake(on) {
+  try {
+    if (on && !wakeLock && "wakeLock" in navigator && document.visibilityState === "visible") {
+      wakeLock = await navigator.wakeLock.request("screen");
+      wakeLock.addEventListener("release", () => { wakeLock = null; });
+    } else if (!on && wakeLock) { await wakeLock.release(); wakeLock = null; }
+  } catch { wakeLock = null; /* not allowed (battery saver, unsupported browser) */ }
+}
+document.addEventListener("visibilitychange", () => { if (!$("ride").hidden) keepAwake(true); });
+
 function applyConfig() {
   const w = cfg.workout, r = cfg.route;
+  $("skip").hidden = !w;
+  lastCueStep = lastCueSecond = null; lastCueState = "waiting";
   $("course-name").textContent = r ? r.name : "Flat road";
   $("end").disabled = false;
   $("strip-bars").hidden = !w; $("strip-track").hidden = !!w;
@@ -873,7 +1104,7 @@ function renderTitle() {
 }
 
 function renderStrip() {
-  const w = cfg.workout, t = last ? last.t : 0;
+  const w = cfg.workout, t = last ? last.moving : 0;
   if (w) {
     const index = Math.min(last ? last.step : 0, w.steps.length - 1), step = w.steps[index];
     $("strip-label").textContent = "Workout · ERG";
@@ -906,7 +1137,11 @@ function render() {
   renderStrip(); renderTitle();
   if (!last) return;
   const p = last.power ?? 0, ratio = p / cfg.ftp, zi = zoneIndex(ratio);
-  $("elapsed").textContent = clock(last.t);
+  $("elapsed").textContent = clock(last.ridden ?? last.moving);
+  if (last.clock === "paused") setStatus(false, "Paused");
+  else if (last.clock === "waiting") setStatus(false, "Waiting");
+  else setStatus(true, "Recording");
+  renderNotice(); cues();
   $("power-v").textContent = p;
   $("zone").textContent = `${ZONES[zi][1]} · ${ZONES[zi][2]}`;
   // Round caps would draw a dot for a zero-length arc, so hide empty arcs.
@@ -952,6 +1187,21 @@ function showSummary(ride) {
   $("laps").innerHTML = s.laps.map((l, i) => `<tr><td class="faint">${i + 1}</td><td>${short(l.elapsed)}</td>
     <td style="color:var(--accent)">${l.avg_power}</td><td>${l.normalized_power ?? "–"}</td><td>${l.avg_hr ?? "–"}</td><td class="hide-sm nowrap">${km(l.distance)} km</td></tr>`).join("");
   $("save-fit").href = `/api/rides/${ride.id}/fit`;
+  $("save-tcx").href = `/api/rides/${ride.id}/tcx`;
+  renderZones($("zones-power"), s.power_zones_s, ZONES.map(([, code, name]) => `${code} ${name}`), (i) => zoneColor(i));
+  const hrNames = ["Z1 Recovery", "Z2 Aerobic", "Z3 Tempo", "Z4 Threshold", "Z5 Maximum"];
+  const hrColors = ["--z1", "--z2", "--z3", "--z4", "--z6"];
+  $("zones-hr-wrap").hidden = !s.hr_zones_s;
+  if (s.hr_zones_s) renderZones($("zones-hr"), s.hr_zones_s, hrNames, (i) => css(hrColors[i]));
+  const ramp = ride.ramp_test && ride.ramp_test.estimated_ftp;
+  $("ramp-card").hidden = !ramp;
+  if (ramp) {
+    $("ramp-ftp").innerHTML = `${ramp}<span class="unit">W</span>`;
+    const current = settings ? settings.ftp : null;
+    $("ramp-note").textContent = current ? `estimated FTP · your current FTP is ${current} W` : "estimated FTP";
+    $("ramp-apply").dataset.ftp = ramp;
+    $("ramp-apply").hidden = current === ramp;
+  }
   const note = $("sum-note");
   note.hidden = !ride.error;
   note.textContent = ride.error ? `The ride ended early (${ride.error}); everything up to that point was saved.` : "";
@@ -960,6 +1210,19 @@ function showSummary(ride) {
   for (const v of VIEWS) $(`v-${v}`).hidden = true;
   window.scrollTo(0, 0);
   requestAnimationFrame(() => drawChart(ride));
+}
+
+function renderZones(el, seconds, names, color) {
+  const total = (seconds || []).reduce((a, b) => a + b, 0) || 1;
+  el.innerHTML = (seconds || []).map((sec, i) => `<div class="zone-bar"><span>${esc(names[i])}</span>
+    <span class="track"><i style="width:${(sec / total) * 100}%;background:${color(i)}"></i></span><b>${short(sec)}</b></div>`).join("");
+}
+
+async function applyFtp(ftp) {
+  try {
+    settings = await api("/api/settings", { method: "POST", json: { ftp } });
+    fillSettings(); toast(`FTP set to ${ftp} W.`);
+  } catch (e) { toast(e.message, true); }
 }
 
 function updateUploadButtons() {
@@ -1027,6 +1290,7 @@ function connectEvents() {
   events.addEventListener("sample", (e) => { last = JSON.parse(e.data); schedule(); });
   events.addEventListener("done", (e) => {
     const finished = JSON.parse(e.data);
+    if (!$("ride").hidden) beep(523, 400);
     showRide(false);
     if (store.get("rullo.dismissed") !== finished.id) showSummary(finished);
   });
@@ -1093,6 +1357,22 @@ $("sum-close").addEventListener("click", () => {
   $("summary").hidden = true; showView();
 });
 $("delete-ride").addEventListener("click", () => { if (shownRide) deleteRide(shownRide); });
+$("ramp-apply").addEventListener("click", async () => {
+  const button = $("ramp-apply");  // read before awaiting: event targets do not survive it
+  await applyFtp(Number(button.dataset.ftp)); button.hidden = true;
+});
+$("p-ftp-apply").addEventListener("click", async () => { await applyFtp(Number($("p-ftp-apply").dataset.ftp)); loadProgress(); });
+$("pause").addEventListener("click", async () => {
+  const action = last && last.clock === "paused" ? "resume" : "pause";
+  try { await api(`/api/ride/${action}`, { method: "POST" }); } catch (e) { toast(e.message, true); }
+});
+$("skip").addEventListener("click", async () => {
+  try { await api("/api/ride/skip", { method: "POST" }); } catch (e) { toast(e.message, true); }
+});
+$("sound").addEventListener("click", () => {
+  store.set("rullo.sound", soundOn() ? "off" : null); renderSound();
+  if (soundOn()) beep(880, 120);
+});
 $("up-strava").addEventListener("click", () => upload("strava"));
 $("up-intervals").addEventListener("click", () => upload("intervals"));
 
@@ -1124,6 +1404,7 @@ window.addEventListener("resize", () => {
   schedule();
   if (location.hash === "#routes") renderRoutes();
   if (shownRide && !$("summary").hidden) drawChart(shownRide);
+  if (location.hash === "#progress") drawProgress();
 });
 
 (async function init() {
@@ -1139,7 +1420,7 @@ window.addEventListener("resize", () => {
     [library, settings] = await Promise.all([api("/api/library"), api("/api/settings")]);
   } catch (e) { toast(`Could not reach Rullo: ${e.message}`, true); }
   if (settings) fillSettings();
-  renderDevices(); renderSession(); showView();
+  renderDevices(); renderSession(); renderSound(); showView();
   connectEvents();
 })();
 </script>
