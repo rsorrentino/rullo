@@ -34,6 +34,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   The ride screen has a power ring gauge against FTP, a workout interval
   strip, a 2x2 metric grid and the route profile.
 - Per-lap NP and estimated calories in the ride summary.
+- Ride controls: pedal to start, pause and resume (resistance eases off), skip
+  block; audio cues at the start, at block changes and in each block's last
+  three seconds; the screen stays awake while riding.
+- FTP ramp test that ends when you fail, jumps to the cool-down and estimates
+  FTP (75% of the best minute) with one-click apply.
+- Progress page: power curve (all time and last 90 days), FTP estimate (95% of
+  the best 20 minutes) and training load (fitness, fatigue, form).
+- Time in power and heart-rate zones; per-lap NP; `.tcx` export; `.erg` and
+  `.mrc` workout import; softer descents and a cap on the steepest pitch.
+- Tacx FE-C trainers over Bluetooth.
+- Runs on Linux, macOS and Windows: per-platform data folders, CI on all three,
+  `uv tool install`/`pipx` support, and standalone PyInstaller builds published
+  for `v*` tags. libusb is bundled for ANT+ sticks.
 - Delete rides from History or the ride summary (`DELETE /api/rides/<id>`);
   copies already uploaded elsewhere are not touched.
 - Logo and favicon, and a consistent layout on every page and screen size.
