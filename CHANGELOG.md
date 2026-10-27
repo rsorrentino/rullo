@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-10-27
+
+First release.
+
 ### Added
 
 - Headless core: `Telemetry`, the `Device` protocol with SIM/ERG/FREE modes,
@@ -61,3 +65,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Browser Ride HUD (first version, `rullo --web`, now replaced by the app): live power with zones, W/kg and %FTP, a
   course/ERG card, an elevation strip, the metric dock and a ride summary,
   streamed from the core by `rullo.bridge` over Server-Sent Events.
+
+[Unreleased]: https://github.com/rsorrentino/rullo/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/rsorrentino/rullo/releases/tag/v0.1.0
