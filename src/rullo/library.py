@@ -117,7 +117,7 @@ class Library:
 
     def ride(self, ride_id: str) -> dict[str, Any]:
         result: dict[str, Any] = json.loads(
-            self.ride_path(ride_id, ".json").read_text()
+            self.ride_path(ride_id, ".json").read_text(encoding="utf-8")
         )
         return result
 

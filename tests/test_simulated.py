@@ -17,6 +17,7 @@
 """SimulatedDevice and loop tests."""
 
 import asyncio
+from pathlib import Path
 
 import pytest
 
@@ -119,3 +120,28 @@ def test_cli_erg_requires_target() -> None:
 def test_cli_rejects_unknown_route() -> None:
     with pytest.raises(SystemExit):
         main(["ride", "--route", "nowhere"])
+
+
+def test_platform_directories(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    from rullo import config
+
+    monkeypatch.delenv("XDG_CONFIG_HOME", raising=False)
+    monkeypatch.delenv("XDG_DATA_HOME", raising=False)
+    monkeypatch.setattr(Path, "home", lambda: tmp_path)
+    monkeypatch.setattr("sys.platform", "darwin")
+    assert config.config_dir() == tmp_path / "Library" / "Application Support" / "Rullo"
+    monkeypatch.setattr("sys.platform", "win32")
+    monkeypatch.setenv("APPDATA", str(tmp_path / "Roaming"))
+    monkeypatch.setenv("LOCALAPPDATA", str(tmp_path / "Local"))
+    assert config.config_dir() == tmp_path / "Roaming" / "Rullo"
+    assert config.data_dir() == tmp_path / "Local" / "Rullo"
+    monkeypatch.setattr("sys.platform", "linux")
+    assert config.data_dir() == tmp_path / ".local" / "share" / "rullo"
+    monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path / "xdg"))
+    assert config.data_dir() == tmp_path / "xdg" / "rullo"
+
+
+def test_cli_version(capsys: pytest.CaptureFixture[str]) -> None:
+    with pytest.raises(SystemExit):
+        main(["--version"])
+    assert capsys.readouterr().out.startswith("rullo ")

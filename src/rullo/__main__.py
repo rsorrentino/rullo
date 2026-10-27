@@ -35,8 +35,9 @@ from rullo.resistance import ResistanceController, ResistanceSettings
 
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        prog="rullo", description="Offline indoor-cycling training for Linux."
+        prog="rullo", description="Offline indoor-cycling training."
     )
+    parser.add_argument("--version", action="version", version=f"rullo {_version()}")
     sub = parser.add_subparsers(dest="command")
     app = sub.add_parser("app", help="open the app in a browser (the default)")
     app.add_argument("--port", type=int, default=8765)
@@ -55,6 +56,15 @@ def _parser() -> argparse.ArgumentParser:
     ride.add_argument("--rate", type=float, default=4.0, help="samples per second")
     ride.add_argument("--seed", type=int, default=0)
     return parser
+
+
+def _version() -> str:
+    from importlib.metadata import PackageNotFoundError, version
+
+    try:
+        return version("rullo")
+    except PackageNotFoundError:  # running from a source tree or a frozen build
+        return "0.1.0"
 
 
 def main(argv: Sequence[str] | None = None) -> int:

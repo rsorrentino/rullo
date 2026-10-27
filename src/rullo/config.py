@@ -14,23 +14,42 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-"""Settings and on-disk locations (XDG base directories)."""
+"""Settings and on-disk locations, following each platform's conventions."""
 
 import json
 import os
+import sys
 from dataclasses import asdict, dataclass, fields
 from pathlib import Path
 from typing import Any, ClassVar
 
 
+def _platform_dir(kind: str) -> Path:
+    """Where settings ("config") or rides and imports ("data") live.
+
+    XDG variables win everywhere (handy for tests and portable setups);
+    otherwise Linux uses XDG defaults, macOS Application Support and Windows
+    %APPDATA% (settings, which roam) and %LOCALAPPDATA% (rides).
+    """
+    xdg = os.environ.get("XDG_CONFIG_HOME" if kind == "config" else "XDG_DATA_HOME")
+    if xdg:
+        return Path(xdg) / "rullo"
+    home = Path.home()
+    if sys.platform == "win32":
+        var = "APPDATA" if kind == "config" else "LOCALAPPDATA"
+        return Path(os.environ.get(var) or home / "AppData" / "Roaming") / "Rullo"
+    if sys.platform == "darwin":
+        return home / "Library" / "Application Support" / "Rullo"
+    default = home / ".config" if kind == "config" else home / ".local" / "share"
+    return default / "rullo"
+
+
 def config_dir() -> Path:
-    base = os.environ.get("XDG_CONFIG_HOME") or Path.home() / ".config"
-    return Path(base) / "rullo"
+    return _platform_dir("config")
 
 
 def data_dir() -> Path:
-    base = os.environ.get("XDG_DATA_HOME") or Path.home() / ".local" / "share"
-    return Path(base) / "rullo"
+    return _platform_dir("data")
 
 
 @dataclass
