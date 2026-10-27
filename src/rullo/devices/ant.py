@@ -24,10 +24,12 @@ blocking sends run in a worker thread. Device ids look like ``ant:17:12345``
 
 import asyncio
 import logging
+import sys
 import threading
 import time
 from collections.abc import AsyncIterator, Awaitable, Callable
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any, Protocol
 
 from rullo.devices import antplus
@@ -68,6 +70,33 @@ class Transport(Protocol):
     def close(self) -> None: ...
 
 
+def _use_bundled_libusb() -> None:
+    """Point pyusb at the libusb shipped by libusb-package.
+
+    Windows and macOS have no system libusb. pyusb caches the first backend it
+    loads, so loading this one first makes openant's own lookups use it.
+    """
+    try:
+        import libusb_package
+        import usb.backend.libusb1
+    except ImportError:  # fall back to the system library
+        return
+    find: Callable[[str], str | None] = libusb_package.find_library
+    bundle = getattr(sys, "_MEIPASS", None)
+    if bundle:  # standalone build: the library sits at the bundle root
+        name = str(libusb_package._LIBRARY_NAME)
+        bundled = Path(bundle) / name
+
+        def find(candidate: str) -> str | None:
+            return (
+                str(bundled)
+                if bundled.is_file()
+                else libusb_package.find_library(candidate)
+            )
+
+    usb.backend.libusb1.get_backend(find_library=find)
+
+
 class OpenAntTransport:
     """``Transport`` over openant's Node; every method blocks (call from a thread)."""
 
@@ -81,7 +110,16 @@ class OpenAntTransport:
         from openant.easy.channel import Channel
         from openant.easy.node import Node
 
-        node = Node()  # raises if no ANT+ USB stick is plugged in
+        _use_bundled_libusb()
+        try:
+            node = Node()
+        except Exception as exc:  # openant raises a bare DriverNotFound
+            if type(exc).__name__ == "DriverNotFound":
+                raise ConnectionError(
+                    "No ANT+ USB stick found. Plug one in; on Linux, install its "
+                    "udev rule (see the README)."
+                ) from exc
+            raise
         node.set_network_key(0x00, ANTPLUS_NETWORK_KEY)
         for spec in channels:
             channel = node.new_channel(Channel.Type.BIDIRECTIONAL_RECEIVE, 0x00, 0x01)

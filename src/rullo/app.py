@@ -687,7 +687,8 @@ class App:
                     )
             except Exception as exc:  # no adapter, BlueZ down, permissions...
                 first = exc.args[0] if exc.args else None
-                reason = first if isinstance(first, str) else exc
+                reason = first if isinstance(first, str) and first else exc
+                reason = str(reason) or type(exc).__name__
                 label = "ANT+" if radio == "ant" else "Bluetooth"
                 logger.warning("%s scan failed: %s", label, reason)
                 error = f"{label} scan failed: {reason}"
