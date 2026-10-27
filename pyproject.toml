@@ -5,15 +5,34 @@ build-backend = "hatchling.build"
 [project]
 name = "rullo"
 version = "0.1.0"
-description = "Solo, offline indoor-cycling training app for Linux (headless core)."
+description = "Solo, offline indoor-cycling training for Linux, macOS and Windows."
 readme = "README.md"
 requires-python = ">=3.12"
 license = "GPL-3.0-or-later"
 license-files = ["LICENSE"]
+authors = [{ name = "The Rullo contributors" }]
+keywords = ["cycling", "indoor training", "smart trainer", "ftms", "ant+", "zwift alternative"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Web Environment",
+    "Intended Audience :: End Users/Desktop",
+    "Operating System :: MacOS",
+    "Operating System :: Microsoft :: Windows",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Games/Entertainment",
+]
 dependencies = [
     "bleak>=0.22",
+    "libusb-package>=1.0.26",
     "openant>=1.3.4",
 ]
+
+[project.urls]
+Homepage = "https://github.com/rsorrentino/rullo"
+Issues = "https://github.com/rsorrentino/rullo/issues"
+Changelog = "https://github.com/rsorrentino/rullo/blob/main/CHANGELOG.md"
 
 [project.scripts]
 rullo = "rullo.__main__:main"
@@ -25,6 +44,9 @@ dev = [
     "ruff>=0.6",
     "mypy>=1.11",
     "fitdecode>=0.11.0",
+]
+packaging = [
+    "pyinstaller>=6.10",
 ]
 
 [tool.hatch.build.targets.wheel]
@@ -49,5 +71,5 @@ mypy_path = "src"
 files = ["src", "tests"]
 
 [[tool.mypy.overrides]]
-module = ["fitdecode", "openant.*"]  # untyped: fitdecode (dev only), openant
+module = ["fitdecode", "openant.*", "libusb_package", "usb.*"]  # untyped libraries
 ignore_missing_imports = true

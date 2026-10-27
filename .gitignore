@@ -218,3 +218,6 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# The PyInstaller build recipe is tracked.
+!packaging/rullo.spec

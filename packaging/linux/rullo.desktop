@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Rullo
+Comment=Offline indoor-cycling training
+Exec=rullo
+Icon=rullo
+Terminal=true
+Categories=Sports;Game;
+Keywords=cycling;trainer;zwift;ftms;
