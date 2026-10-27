@@ -1,0 +1,61 @@
+name: Build
+
+# Standalone builds for Linux, macOS and Windows. Runs on demand and for version
+# tags; a v* tag also publishes the archives as a GitHub Release.
+on:
+  workflow_dispatch:
+  push:
+    tags: ["v*"]
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-22.04  # older glibc, so the build runs on more distributions
+            name: rullo-linux-x86_64
+          - os: macos-14
+            name: rullo-macos-arm64
+          - os: windows-latest
+            name: rullo-windows-x86_64
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.12"
+      - run: uv sync --locked --group packaging
+      - run: uv run pyinstaller packaging/rullo.spec --noconfirm --distpath dist --workpath build
+      - name: Smoke test the built app
+        env:
+          XDG_CONFIG_HOME: ${{ runner.temp }}/rullo-smoke
+          XDG_DATA_HOME: ${{ runner.temp }}/rullo-smoke
+        run: |
+          ./dist/rullo/rullo --version
+          ./dist/rullo/rullo ride --route col-climb --duration 1 --rate 10
+      - run: uv run python packaging/stage.py ${{ matrix.name }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.name }}
+          path: dist/${{ matrix.name }}.*
+          if-no-files-found: error
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: artifacts/*
+          generate_release_notes: true
